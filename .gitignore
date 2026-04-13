@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Cache files
+_russell2000_cache.json
+_sp500_cache.json
+_nasdaq100_cache.json
+*.cache.json
+backend/app/data/_*.json
+
+# Claude local settings
+.claude/settings.local.json
+
+# yfinance / data cache
+*.pkl
+*.h5
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+.npm/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# OS
+Thumbs.db
