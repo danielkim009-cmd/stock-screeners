@@ -1,6 +1,6 @@
 # Stock Screener
 
-A multi-strategy stock screening and backtesting app built with a FastAPI backend and a React + Vite frontend. Screens S&P 500, NASDAQ 100, Russell 2000, Futures, and Crypto universes using institutional momentum strategies.
+A multi-strategy stock screening and backtesting app. Available in two flavours — a **Streamlit** single-file app (simpler, no Node required) and a **React + FastAPI** app (polished UI with TradingView charts). Both use the same Python strategy backend.
 
 ![Dark-themed UI with strategy tabs, screener results, and equity curve charts]
 
@@ -11,7 +11,6 @@ A multi-strategy stock screening and backtesting app built with a FastAPI backen
 | **Daniel's Breakout** | EMA momentum stack (21/50/100) + volume-confirmed 6-month high breakout. Includes single-ticker and portfolio backtesting. |
 | **Turtle Trading** | Classic Donchian channel breakout system (20-day S1, 55-day S2) with ATR(20) trailing stop. |
 | **Minervini SEPA** | Stan Minervini's 8-criteria Specific Entry Point Analysis trend template with RS rating vs universe. |
-| **O'Neil Patterns** | William O'Neil-style cup-with-handle and base pattern detection. |
 
 ## Portfolio Backtester (Daniel's Breakout)
 
@@ -39,15 +38,86 @@ The most fully-featured component. Runs a walk-forward simulation on the S&P 500
 
 | Layer | Tech |
 |---|---|
-| Backend | Python 3.11+, FastAPI, uvicorn |
+| Strategy backend | Python 3.11+, FastAPI, uvicorn |
 | Data | yfinance 0.2.66, pandas, numpy |
-| Frontend | React 18, Vite, TradingView Lightweight Charts |
+| Streamlit frontend | Streamlit ≥ 1.32, Plotly |
+| React frontend | React 18, Vite, TradingView Lightweight Charts |
 | Universes | S&P 500 (Wikipedia), NASDAQ 100 (Wikipedia), Russell 2000 (iShares IWM CSV), Futures, Crypto |
+
+## Running the App
+
+There are two independent frontends. Both use the same Python strategy code — pick whichever suits you.
+
+---
+
+### Option 1 — Streamlit (recommended for simplicity)
+
+No Node.js required. Everything runs in a single Python process.
+
+```bash
+# 1. Create and activate virtual environment (first time only)
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# 2. Run from the project root
+cd ..
+source backend/.venv/bin/activate
+streamlit run streamlit_app.py
+```
+
+Open: **http://localhost:8501**
+
+| Feature | Streamlit |
+|---|---|
+| Charts | Plotly (interactive, zoom/pan) |
+| Candlestick | ✓ with EMA overlays |
+| Equity curve | ✓ strategy vs benchmark |
+| Trade log filters | ✓ |
+| Portfolio backtest | ✓ |
+| Node.js required | ✗ |
+
+---
+
+### Option 2 — React + FastAPI (polished UI)
+
+Requires Node.js 20+. Runs two separate processes.
+
+```bash
+# Terminal 1 — API backend
+cd backend
+source .venv/bin/activate
+uvicorn app.main:app --reload --port 8000
+
+# Terminal 2 — React frontend
+cd frontend
+npm install       # first time only
+npm run dev
+```
+
+Open: **http://localhost:5173**
+
+| Feature | React + FastAPI |
+|---|---|
+| Charts | TradingView Lightweight Charts |
+| Candlestick | ✓ with EMA overlays |
+| Equity curve | ✓ strategy vs benchmark |
+| Trade log filters | ✓ |
+| Portfolio backtest | ✓ |
+| Node.js required | ✓ |
+
+> The Vite dev server proxies all `/api` requests to `localhost:8000` automatically.
+
+API docs: **http://localhost:8000/docs**
+
+---
 
 ## Project Structure
 
 ```
 stock-screeners/
+├── streamlit_app.py                     # Streamlit app (Option 1)
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                          # FastAPI entry point, CORS
@@ -64,7 +134,6 @@ stock-screeners/
 │   │       ├── turtle_backtest.py
 │   │       ├── minervini.py                 # SEPA 8-criteria trend template
 │   │       ├── minervini_backtest.py
-│   │       └── oneil.py                     # O'Neil cup/base patterns
 │   ├── sliding_window_test.py               # 10-year sliding window batch runner
 │   ├── sliding_window_results_quarterly.html
 │   ├── sliding_window_results_nasdaq100.html
@@ -84,42 +153,10 @@ stock-screeners/
     │   │   ├── DanielsBreakoutScreener.jsx  # Main screener + portfolio backtest UI
     │   │   ├── TurtleScreener.jsx
     │   │   ├── MinerviniScreener.jsx
-    │   │   └── OneilScreener.jsx
-    │   └── utils/exportCsv.js
+        │   └── utils/exportCsv.js
     ├── package.json
     └── vite.config.js
 ```
-
-## Setup
-
-### Prerequisites
-
-- Python 3.11+
-- Node.js 20+
-
-### Backend
-
-```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-```
-
-API docs: http://localhost:8000/docs
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-App: http://localhost:5173
-
-> The Vite dev server proxies all `/api` requests to `localhost:8000` — no CORS setup needed in development.
 
 ## API Endpoints
 

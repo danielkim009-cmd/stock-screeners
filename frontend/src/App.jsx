@@ -2,13 +2,10 @@ import { useState } from "react";
 import TurtleScreener from "./pages/TurtleScreener";
 import MinerviniScreener from "./pages/MinerviniScreener";
 import DanielsBreakoutScreener from "./pages/DanielsBreakoutScreener";
-import OneilScreener from "./pages/OneilScreener";
-
 const STRATEGIES = [
   { id: "daniels",   label: "Daniel's Breakout" },
   { id: "turtle",    label: "Turtle" },
   { id: "minervini", label: "Minervini SEPA" },
-  { id: "oneil",     label: "O'Neil Patterns" },
   // { id: "hmm", label: "GMM-HMM" },
 ];
 
@@ -56,7 +53,6 @@ export default function App() {
         {active === "turtle"    && <TurtleScreener />}
         {active === "minervini" && <MinerviniScreener />}
         {active === "daniels"   && <DanielsBreakoutScreener />}
-        {active === "oneil"     && <OneilScreener />}
       </main>
     </div>
   );

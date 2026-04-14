@@ -23,7 +23,6 @@ from app.strategies.daniels_backtest import run_daniels_backtest
 from app.strategies.daniels_portfolio_backtest import run_daniels_portfolio_backtest
 from app.strategies.minervini_backtest import run_minervini_backtest
 from app.strategies.turtle_backtest import run_turtle_backtest
-from app.strategies.oneil import screen_oneil
 
 router = APIRouter()
 executor = ThreadPoolExecutor(max_workers=8)
@@ -174,20 +173,6 @@ class PortfolioBacktestResponse(BaseModel):
     sharpe_ratio:        float
     avg_trade_pnl_pct:   float
     avg_positions:       float
-
-
-class OneilResult(_MetaMixin):
-    ticker:          str
-    pattern:         str      # "CUP_HANDLE" | "FLAT_BASE" | "DOUBLE_BOTTOM"
-    pivot:           float
-    last_close:      float
-    breakout:        bool
-    breakout_vol:    bool
-    rel_volume:      float
-    depth_pct:       float
-    base_weeks:      int
-    pct_from_pivot:  float
-    rs_rating:       float = 0.0   # 0–99 relative-strength vs screened universe
 
 
 class OHLCVPoint(BaseModel):
@@ -734,102 +719,6 @@ def backtest_minervini(
         n_trades=result.n_trades,
         sharpe_ratio=result.sharpe_ratio,
         avg_trade_pnl_pct=result.avg_trade_pnl_pct,
-    )
-
-
-@router.get("/screen/oneil", response_model=ScreenerResponse)
-def screen_oneil_patterns(
-    universe: str = Query(
-        default="sp500",
-        description="Universe: sp500 | nasdaq100 | russell2000 | russell3000",
-    ),
-    pattern_filter: str = Query(
-        default="ALL",
-        description="Filter: ALL | CUP_HANDLE | FLAT_BASE | DOUBLE_BOTTOM",
-    ),
-    breakout_only: bool = Query(
-        default=False,
-        description="If true, only return tickers already breaking above their pivot",
-    ),
-    max_tickers: int = Query(
-        default=200,
-        le=3000,
-        description="Limit tickers screened per run",
-    ),
-):
-    """
-    Scan for O'Neil CAN SLIM base patterns: Cup-with-Handle, Flat Base, Double Bottom.
-
-    Returns stocks near or at their pivot buy point.
-    Pattern priority: Cup-with-Handle > Flat Base > Double Bottom.
-    RS Rating (0–99) is computed relative to all tickers in the screened batch,
-    mirroring the CAN SLIM "L — Leader" criterion.
-    """
-    tickers = fetch_tickers(universe)[:max_tickers]
-    data    = fetch_bulk_ohlcv(tickers, period_days=400)
-
-    # Compute RS ratings across the full batch (L — Leader criterion)
-    returns: dict[str, float] = {}
-    for ticker in tickers:
-        df = data.get(ticker)
-        if df is not None and not df.empty:
-            ret = calc_12m_return(df)
-            if ret is not None:
-                returns[ticker] = ret
-    rs_ratings = compute_rs_ratings(returns)
-
-    raw: list[tuple] = []
-    for ticker in tickers:
-        df = data.get(ticker)
-        if df is None or df.empty:
-            continue
-        sig = screen_oneil(df, ticker)
-        if sig is None:
-            continue
-        if pattern_filter != "ALL" and sig.pattern != pattern_filter:
-            continue
-        if breakout_only and not sig.breakout:
-            continue
-        raw.append((sig, df))
-
-    result_tickers = [sig.ticker for sig, _ in raw]
-    meta = fetch_ticker_info(result_tickers)
-
-    results = []
-    for sig, df in raw:
-        extras = compute_ohlcv_extras(df)
-        m = meta.get(sig.ticker, {})
-        results.append(OneilResult(
-            ticker=sig.ticker,
-            pattern=sig.pattern,
-            pivot=sig.pivot,
-            last_close=sig.last_close,
-            breakout=sig.breakout,
-            breakout_vol=sig.breakout_vol,
-            rel_volume=sig.rel_volume,
-            depth_pct=sig.depth_pct,
-            base_weeks=sig.base_weeks,
-            pct_from_pivot=sig.pct_from_pivot,
-            rs_rating=round(rs_ratings.get(sig.ticker, 0.0), 1),
-            name=m.get("name"),
-            price_change_pct=extras["price_change_pct"],
-            today_vol=extras["today_vol"],
-            rel_vol=extras["rel_vol"],
-            market_cap=m.get("market_cap"),
-            eps=m.get("eps"),
-            sector=m.get("sector"),
-            analyst_rating=m.get("analyst_rating"),
-        ))
-
-    # Sort: breakouts first, then by pct_from_pivot ascending (closest to pivot)
-    results.sort(key=lambda r: (-int(r.breakout and r.breakout_vol), -int(r.breakout), r.pct_from_pivot))
-
-    return ScreenerResponse(
-        strategy="oneil",
-        universe=universe,
-        total_screened=len(tickers),
-        matches=len([r for r in results if r.breakout]),
-        results=results,
     )
 
 
