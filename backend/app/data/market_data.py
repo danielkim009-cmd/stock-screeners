@@ -48,31 +48,52 @@ def fetch_ohlcv(
 def fetch_bulk_ohlcv(
     tickers: list[str],
     period_days: int = 365,
+    batch_size: int = 100,
 ) -> dict[str, pd.DataFrame]:
     """
-    Fetch OHLCV for multiple tickers in one yfinance call (faster).
+    Fetch OHLCV for multiple tickers in batches using yfinance.
+    Batching avoids silent failures from overly large single requests.
     Returns {ticker: DataFrame}.
     """
     end = datetime.today() + timedelta(days=1)
     start = end - timedelta(days=period_days + 1)
-    try:
-        raw = yf.download(
-            tickers,
-            start=start.strftime("%Y-%m-%d"),
-            end=end.strftime("%Y-%m-%d"),
-            auto_adjust=True,
-            progress=False,
-            group_by="ticker",
-        )
-    except Exception:
-        return {}
+    start_str = start.strftime("%Y-%m-%d")
+    end_str   = end.strftime("%Y-%m-%d")
 
     result = {}
-    for ticker in tickers:
+    for i in range(0, len(tickers), batch_size):
+        batch = tickers[i : i + batch_size]
         try:
-            df = raw[ticker][["Open", "High", "Low", "Close", "Volume"]].dropna()
-            if not df.empty:
-                result[ticker] = df
+            raw = yf.download(
+                batch,
+                start=start_str,
+                end=end_str,
+                auto_adjust=True,
+                progress=False,
+                group_by="ticker",
+            )
+            if raw is None or raw.empty:
+                continue
+
+            # Single ticker: yfinance returns a flat (non-MultiIndex) DataFrame
+            if len(batch) == 1:
+                ticker = batch[0]
+                try:
+                    df = raw[["Open", "High", "Low", "Close", "Volume"]].dropna()
+                    if isinstance(df.columns, pd.MultiIndex):
+                        df.columns = df.columns.get_level_values(0)
+                    if not df.empty:
+                        result[ticker] = df
+                except Exception:
+                    pass
+            else:
+                for ticker in batch:
+                    try:
+                        df = raw[ticker][["Open", "High", "Low", "Close", "Volume"]].dropna()
+                        if not df.empty:
+                            result[ticker] = df
+                    except Exception:
+                        continue
         except Exception:
             continue
     return result
