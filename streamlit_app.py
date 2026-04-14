@@ -363,6 +363,15 @@ UNIVERSE_OPTIONS = {
     "Crypto":       "crypto",
 }
 
+UNIVERSE_MAX = {
+    "sp500":      500,
+    "nasdaq100":  100,
+    "russell2000": 2000,
+    "russell3000": 3000,
+    "futures":    50,
+    "crypto":     50,
+}
+
 PF_UNIVERSES = ["S&P 500", "NASDAQ 100", "Russell 2000"]
 
 BENCHMARK_MAP = {
@@ -430,7 +439,10 @@ if page == "Daniel's Breakout":
         with col2:
             d_min = st.selectbox("Min Criteria", [6, 5, 4, 3, 2, 1], index=1, key="d_min")
         with col3:
-            d_max = st.number_input("Max Tickers", 50, 3000, 500, 50, key="d_max")
+            if st.session_state.get("_d_uni_prev") != d_uni:
+                st.session_state["d_max"] = UNIVERSE_MAX.get(d_uni, 500)
+                st.session_state["_d_uni_prev"] = d_uni
+            d_max = st.number_input("Max Tickers", 50, 3000, UNIVERSE_MAX.get(d_uni, 500), 50, key="d_max")
         with col4:
             st.write(""); st.write("")
             d_run = st.button("Run Screen", type="primary", key="d_run", use_container_width=True)
@@ -740,7 +752,10 @@ elif page == "Turtle Trading":
         with col2:
             t_sig = st.selectbox("Signal", ["ALL", "S1_BUY", "S2_BUY"], key="t_sig")
         with col3:
-            t_max = st.number_input("Max Tickers", 50, 3000, 500, 50, key="t_max")
+            if st.session_state.get("_t_uni_prev") != t_uni:
+                st.session_state["t_max"] = UNIVERSE_MAX.get(t_uni, 500)
+                st.session_state["_t_uni_prev"] = t_uni
+            t_max = st.number_input("Max Tickers", 50, 3000, UNIVERSE_MAX.get(t_uni, 500), 50, key="t_max")
         with col4:
             st.write(""); st.write("")
             t_run = st.button("Run Screen", type="primary", key="t_run", use_container_width=True)
@@ -829,7 +844,10 @@ elif page == "Minervini SEPA":
         with col2:
             mv_min = st.selectbox("Min Criteria", [10, 9, 8, 7, 6, 5], key="mv_min")
         with col3:
-            mv_max = st.number_input("Max Tickers", 50, 3000, 500, 50, key="mv_max")
+            if st.session_state.get("_mv_uni_prev") != mv_uni:
+                st.session_state["mv_max"] = UNIVERSE_MAX.get(mv_uni, 500)
+                st.session_state["_mv_uni_prev"] = mv_uni
+            mv_max = st.number_input("Max Tickers", 50, 3000, UNIVERSE_MAX.get(mv_uni, 500), 50, key="mv_max")
         with col4:
             st.write(""); st.write("")
             mv_run = st.button("Run Screen", type="primary", key="mv_run", use_container_width=True)
