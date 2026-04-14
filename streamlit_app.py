@@ -4,6 +4,7 @@ Covers: Daniel's Breakout, Turtle Trading, Minervini SEPA
 """
 from __future__ import annotations
 
+import json
 import os
 import sys
 from datetime import date, timedelta
@@ -12,6 +13,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import streamlit as st
+import streamlit.components.v1 as components
 
 # Add backend package to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "backend"))
@@ -68,6 +70,16 @@ def fmt_vol(v):
         return f"{v / 1_000:.0f}K"
     return str(int(v))
 
+def style_trade_log(df):
+    """Apply green/red text to the P&L % column."""
+    def _color(val):
+        if val > 0:
+            return "color: #56d364; font-weight: 600"
+        if val < 0:
+            return "color: #f85149; font-weight: 600"
+        return ""
+    return df.style.map(_color, subset=["P&L %"])
+
 def fmt_mktcap(v):
     if not v:
         return "—"
@@ -82,76 +94,367 @@ def fmt_mktcap(v):
 # ─────────────────────────────────────────────────────────────────────────────
 # Chart helpers
 # ─────────────────────────────────────────────────────────────────────────────
-def equity_chart(equity_curve, bh_curve=None, bm_label="Benchmark"):
-    dates  = [p["date"]  for p in equity_curve]
-    values = [p["value"] for p in equity_curve]
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=dates, y=values, name="Strategy",
-        line=dict(color="#56d364", width=2),
-        hovertemplate="%{x}<br>$%{y:,.0f}<extra>Strategy</extra>",
-    ))
-    if bh_curve:
-        bh_dates  = [p["date"]  for p in bh_curve]
-        bh_values = [p["value"] for p in bh_curve]
-        fig.add_trace(go.Scatter(
-            x=bh_dates, y=bh_values, name=bm_label,
-            line=dict(color="#58a6ff", width=1.5, dash="dot"),
-            hovertemplate="%{x}<br>$%{y:,.0f}<extra>" + bm_label + "</extra>",
-        ))
-    fig.update_layout(
-        template="plotly_dark",
-        margin=dict(l=0, r=0, t=30, b=0),
-        height=380,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        yaxis=dict(tickprefix="$", tickformat=",.0f"),
-        hovermode="x unified",
-    )
-    return fig
+def equity_chart_html(equity_curve, bh_curve=None, bm_label="Benchmark", height=380):
+    """TradingView Lightweight Charts equity curve — returns embeddable HTML."""
+    strat_data = [{"time": p["date"][:10], "value": round(float(p["value"]), 2)}
+                  for p in equity_curve]
+    bh_data    = [{"time": p["date"][:10], "value": round(float(p["value"]), 2)}
+                  for p in bh_curve] if bh_curve else []
+
+    # Default tooltip values (last point)
+    last_strat = strat_data[-1]["value"] if strat_data else 0
+    last_bh    = bh_data[-1]["value"]    if bh_data    else None
+    last_date  = strat_data[-1]["time"]  if strat_data else ""
+
+    def fmt(v):
+        if v >= 1_000_000: return f"${v/1_000_000:.2f}M"
+        if v >= 1_000:     return f"${v/1_000:.1f}K"
+        return f"${v:,.0f}"
+
+    d_strat = fmt(last_strat)
+    d_bh    = fmt(last_bh) if last_bh is not None else "—"
+
+    bm_js   = json.dumps(bm_label)
+    has_bh  = "true" if bh_data else "false"
+
+    return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+* {{ margin:0; padding:0; box-sizing:border-box; }}
+html, body {{ background:#0d1117; overflow:hidden; font-family:'Courier New',monospace; }}
+#info {{ background:#161b22; border-bottom:1px solid #30363d;
+         padding:6px 14px; height:40px; display:flex; align-items:center;
+         gap:20px; font-size:12px; color:#e6edf3; white-space:nowrap; }}
+.lbl {{ color:#8b949e; margin-right:3px; }}
+#chart {{ width:100%; height:{height - 40}px; }}
+</style></head><body>
+<div id="info">
+  <span id="idate" style="color:#8b949e">{last_date}</span>
+  <span><span class="lbl">Strategy</span><span id="istrat" style="color:#56d364;font-weight:700">{d_strat}</span></span>
+  <span id="bh-span"><span class="lbl" id="bm-lbl">{bm_label}</span><span id="ibh" style="color:#58a6ff;font-weight:700">{d_bh}</span></span>
+</div>
+<div id="chart"></div>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+const stratData = {json.dumps(strat_data)};
+const bhData    = {json.dumps(bh_data)};
+const bmLabel   = {bm_js};
+const hasBh     = {has_bh};
+
+function fmtVal(v) {{
+  if (v >= 1e6) return '$' + (v/1e6).toFixed(2) + 'M';
+  if (v >= 1e3) return '$' + (v/1e3).toFixed(1) + 'K';
+  return '$' + v.toFixed(0).replace(/\\B(?=(\\d{{3}})+(?!\\d))/g, ',');
+}}
+
+const chart = LightweightCharts.createChart(document.getElementById('chart'), {{
+  width:  document.getElementById('chart').clientWidth,
+  height: {height - 40},
+  layout: {{ background: {{type:'solid', color:'#0d1117'}}, textColor:'#e6edf3', fontSize:12 }},
+  grid:   {{ vertLines:{{color:'#21262d'}}, horzLines:{{color:'#21262d'}} }},
+  crosshair: {{
+    mode: LightweightCharts.CrosshairMode.Normal,
+    vertLine: {{ color:'#58a6ff', width:1, style:LightweightCharts.LineStyle.Dashed, labelBackgroundColor:'#21262d' }},
+    horzLine: {{ color:'#58a6ff', width:1, style:LightweightCharts.LineStyle.Dashed, labelBackgroundColor:'#21262d' }},
+  }},
+  rightPriceScale: {{ borderColor:'#30363d' }},
+  timeScale: {{ borderColor:'#30363d', timeVisible:true, secondsVisible:false }},
+  localization: {{ priceFormatter: v => fmtVal(v) }},
+}});
+
+const stratSeries = chart.addAreaSeries({{
+  lineColor:    '#56d364',
+  topColor:     'rgba(86,211,100,0.15)',
+  bottomColor:  'rgba(86,211,100,0.0)',
+  lineWidth:    2,
+  priceLineVisible:   false,
+  lastValueVisible:   false,
+  crosshairMarkerVisible: true,
+}});
+stratSeries.setData(stratData);
+
+let bhSeries;
+if (hasBh && bhData.length) {{
+  bhSeries = chart.addLineSeries({{
+    color:    '#58a6ff',
+    lineWidth: 1,
+    lineStyle: LightweightCharts.LineStyle.Dashed,
+    priceLineVisible:   false,
+    lastValueVisible:   false,
+    crosshairMarkerVisible: true,
+  }});
+  bhSeries.setData(bhData);
+}}
+
+if (!hasBh) document.getElementById('bh-span').style.display = 'none';
+
+chart.subscribeCrosshairMove(param => {{
+  const sv = param.seriesData && param.seriesData.get(stratSeries);
+  if (!sv || !param.time) return;
+  document.getElementById('idate').textContent  = param.time;
+  document.getElementById('istrat').textContent = fmtVal(sv.value);
+  if (bhSeries) {{
+    const bv = param.seriesData.get(bhSeries);
+    document.getElementById('ibh').textContent = bv ? fmtVal(bv.value) : '—';
+  }}
+}});
+
+chart.timeScale().fitContent();
+new ResizeObserver(() => {{
+  chart.applyOptions({{ width: document.getElementById('chart').clientWidth }});
+}}).observe(document.getElementById('chart'));
+</script></body></html>"""
 
 
 def candlestick_chart(df, ticker, ema21=None, ema50=None, ema100=None):
+    dates = df.index.astype(str).tolist()
+    closes = df["Close"].tolist()
+    opens  = df["Open"].tolist()
+
+    # Volume bar colors — semi-transparent like React version
+    vol_colors = [
+        "rgba(86,211,100,0.4)" if c >= o else "rgba(248,81,73,0.4)"
+        for c, o in zip(closes, opens)
+    ]
+
     fig = make_subplots(
         rows=2, cols=1,
         shared_xaxes=True,
-        vertical_spacing=0.03,
-        row_heights=[0.75, 0.25],
+        vertical_spacing=0.02,
+        row_heights=[0.78, 0.22],
     )
+
+    # Candlesticks
     fig.add_trace(go.Candlestick(
-        x=df.index.astype(str),
+        x=dates,
         open=df["Open"], high=df["High"],
-        low=df["Low"], close=df["Close"],
+        low=df["Low"],  close=df["Close"],
         name=ticker,
-        increasing_line_color="#56d364",
-        decreasing_line_color="#f85149",
+        increasing=dict(line=dict(color="#56d364", width=1), fillcolor="#56d364"),
+        decreasing=dict(line=dict(color="#f85149", width=1), fillcolor="#f85149"),
         showlegend=False,
+        hoverinfo="none",
     ), row=1, col=1)
+
+    # EMA overlays — no tooltip bubble
     if ema21 is not None:
-        fig.add_trace(go.Scatter(x=df.index.astype(str), y=ema21,
-            name="EMA21", line=dict(color="#f8c518", width=1)), row=1, col=1)
+        fig.add_trace(go.Scatter(x=dates, y=ema21, name="EMA21",
+            line=dict(color="#f8c518", width=1),
+            hoverinfo="none"), row=1, col=1)
     if ema50 is not None:
-        fig.add_trace(go.Scatter(x=df.index.astype(str), y=ema50,
-            name="EMA50", line=dict(color="#58a6ff", width=1)), row=1, col=1)
+        fig.add_trace(go.Scatter(x=dates, y=ema50, name="EMA50",
+            line=dict(color="#58a6ff", width=1),
+            hoverinfo="none"), row=1, col=1)
     if ema100 is not None:
-        fig.add_trace(go.Scatter(x=df.index.astype(str), y=ema100,
-            name="EMA100", line=dict(color="#e3b341", width=1)), row=1, col=1)
-    vol_colors = [
-        "#56d364" if c >= o else "#f85149"
-        for c, o in zip(df["Close"], df["Open"])
-    ]
+        fig.add_trace(go.Scatter(x=dates, y=ema100, name="EMA100",
+            line=dict(color="#bc8cff", width=1.5),
+            hoverinfo="none"), row=1, col=1)
+
+    # Volume histogram — no tooltip bubble
     fig.add_trace(go.Bar(
-        x=df.index.astype(str), y=df["Volume"],
-        name="Volume", marker_color=vol_colors, showlegend=False,
+        x=dates, y=df["Volume"],
+        name="Volume",
+        marker_color=vol_colors,
+        showlegend=False,
+        hoverinfo="none",
     ), row=2, col=1)
+
+    # Invisible scatter to drive crosshair spike lines (no visible tooltip)
+    fig.add_trace(go.Scatter(
+        x=dates, y=closes,
+        mode="markers",
+        marker=dict(opacity=0, size=6),
+        showlegend=False,
+        hovertemplate=" <extra></extra>",
+    ), row=1, col=1)
+
     fig.update_layout(
-        template="plotly_dark",
+        paper_bgcolor="#0d1117",
+        plot_bgcolor="#0d1117",
+        font=dict(color="#e6edf3", size=12),
         margin=dict(l=0, r=0, t=30, b=0),
-        height=520,
+        height=540,
         xaxis_rangeslider_visible=False,
-        hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        hovermode="x",
+        hoverlabel=dict(
+            bgcolor="rgba(0,0,0,0)",
+            bordercolor="rgba(0,0,0,0)",
+            font=dict(color="rgba(0,0,0,0)", size=1),
+        ),
+        legend=dict(
+            orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
+            font=dict(size=11), bgcolor="rgba(0,0,0,0)",
+        ),
+        xaxis=dict(
+            gridcolor="#21262d", linecolor="#30363d",
+            showgrid=True, zeroline=False,
+            showspikes=True, spikecolor="#58a6ff", spikethickness=1,
+            spikedash="dot", spikemode="across", spikesnap="cursor",
+        ),
+        yaxis=dict(
+            gridcolor="#21262d", linecolor="#30363d",
+            showgrid=True, zeroline=False, side="right",
+            showspikes=True, spikecolor="#58a6ff", spikethickness=1,
+            spikedash="dot", spikemode="across",
+        ),
+        xaxis2=dict(
+            gridcolor="#21262d", linecolor="#30363d",
+            showgrid=True, zeroline=False,
+        ),
+        yaxis2=dict(
+            gridcolor="#21262d", linecolor="#30363d",
+            showgrid=True, zeroline=False, side="right",
+        ),
     )
     return fig
+
+
+def candlestick_chart_html(df, ticker, ema21=None, ema50=None, ema100=None, height=550):
+    """TradingView Lightweight Charts — returns embeddable HTML string."""
+    candle_data, vol_data, prev_close_map = [], [], {}
+    prev_c = None
+    for idx, row in df.iterrows():
+        t = str(idx)[:10]
+        o, h, l, c = float(row["Open"]), float(row["High"]), float(row["Low"]), float(row["Close"])
+        v = int(row["Volume"])
+        candle_data.append({"time": t, "open": round(o, 4), "high": round(h, 4),
+                             "low": round(l, 4), "close": round(c, 4)})
+        color = "rgba(86,211,100,0.4)" if c >= o else "rgba(248,81,73,0.4)"
+        vol_data.append({"time": t, "value": v, "color": color})
+        if prev_c is not None:
+            prev_close_map[t] = prev_c
+        prev_c = c
+
+    def to_tv(series):
+        if series is None:
+            return []
+        return [{"time": str(idx)[:10], "value": round(float(v), 4)}
+                for idx, v in series.items() if v == v]  # skip NaN
+
+    ema21_data  = to_tv(ema21)
+    ema50_data  = to_tv(ema50)
+    ema100_data = to_tv(ema100)
+
+    # Default info bar (last bar)
+    last = df.iloc[-1]
+    prev = df.iloc[-2] if len(df) > 1 else last
+    d_chg = float(last["Close"]) - float(prev["Close"])
+    d_pct = (d_chg / float(prev["Close"]) * 100) if float(prev["Close"]) else 0
+    d_clr = "#56d364" if d_chg >= 0 else "#f85149"
+    d_sign = "+" if d_chg >= 0 else ""
+    lv = int(last["Volume"])
+    d_vol = f"{lv/1e6:.1f}M" if lv >= 1e6 else (f"{lv/1e3:.0f}K" if lv >= 1e3 else str(lv))
+    d_e21  = f"{ema21.iloc[-1]:.2f}"  if ema21  is not None else "—"
+    d_e50  = f"{ema50.iloc[-1]:.2f}"  if ema50  is not None else "—"
+    d_e100 = f"{ema100.iloc[-1]:.2f}" if ema100 is not None else "—"
+    d_chg_txt = f"{d_sign}{d_chg:.2f} ({d_sign}{d_pct:.2f}%)"
+
+    chart_h = height - 40  # leave 40 px for info bar
+
+    return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+* {{ margin:0; padding:0; box-sizing:border-box; }}
+html, body {{ background:#0d1117; overflow:hidden; font-family:'Courier New',monospace; }}
+#info {{ background:#161b22; border-bottom:1px solid #30363d;
+         padding:6px 14px; height:40px; display:flex; align-items:center;
+         gap:18px; font-size:12px; color:#e6edf3; white-space:nowrap; overflow:hidden; }}
+.lbl {{ color:#8b949e; margin-right:3px; }}
+#chart {{ width:100%; height:{chart_h}px; }}
+</style></head><body>
+<div id="info">
+  <span><span class="lbl">O</span><span id="io">{last['Open']:.2f}</span></span>
+  <span><span class="lbl">H</span><span id="ih" style="color:#56d364">{last['High']:.2f}</span></span>
+  <span><span class="lbl">L</span><span id="il" style="color:#f85149">{last['Low']:.2f}</span></span>
+  <span><span class="lbl">C</span><span id="ic" style="color:{d_clr};font-weight:700">{last['Close']:.2f}</span></span>
+  <span id="ig" style="color:{d_clr};font-weight:700">{d_chg_txt}</span>
+  <span><span class="lbl">Vol</span><span id="iv">{d_vol}</span></span>
+  <span><span class="lbl">EMA21</span><span id="ie21" style="color:#f8c518;font-weight:700">{d_e21}</span></span>
+  <span><span class="lbl">EMA50</span><span id="ie50" style="color:#58a6ff;font-weight:700">{d_e50}</span></span>
+  <span><span class="lbl">EMA100</span><span id="ie100" style="color:#bc8cff;font-weight:700">{d_e100}</span></span>
+</div>
+<div id="chart"></div>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+const candleData   = {json.dumps(candle_data)};
+const volData      = {json.dumps(vol_data)};
+const ema21Data    = {json.dumps(ema21_data)};
+const ema50Data    = {json.dumps(ema50_data)};
+const ema100Data   = {json.dumps(ema100_data)};
+const prevCloseMap = {json.dumps(prev_close_map)};
+
+function fmtVol(v) {{
+  if (v >= 1e6) return (v/1e6).toFixed(1)+'M';
+  if (v >= 1e3) return (v/1e3).toFixed(0)+'K';
+  return String(Math.round(v));
+}}
+
+const chart = LightweightCharts.createChart(document.getElementById('chart'), {{
+  width: document.getElementById('chart').clientWidth,
+  height: {chart_h},
+  layout: {{ background: {{type:'solid', color:'#0d1117'}}, textColor:'#e6edf3', fontSize:12 }},
+  grid: {{ vertLines:{{color:'#21262d'}}, horzLines:{{color:'#21262d'}} }},
+  crosshair: {{
+    mode: LightweightCharts.CrosshairMode.Normal,
+    vertLine: {{ color:'#58a6ff', width:1, style:LightweightCharts.LineStyle.Dashed, labelBackgroundColor:'#21262d' }},
+    horzLine: {{ color:'#58a6ff', width:1, style:LightweightCharts.LineStyle.Dashed, labelBackgroundColor:'#21262d' }},
+  }},
+  rightPriceScale: {{ borderColor:'#30363d', scaleMargins:{{top:0.08, bottom:0.22}} }},
+  timeScale: {{ borderColor:'#30363d', timeVisible:true, secondsVisible:false }},
+}});
+
+const cSeries = chart.addCandlestickSeries({{
+  upColor:'#56d364', downColor:'#f85149',
+  borderUpColor:'#56d364', borderDownColor:'#f85149',
+  wickUpColor:'#56d364', wickDownColor:'#f85149',
+}});
+cSeries.setData(candleData);
+
+const vSeries = chart.addHistogramSeries({{ priceFormat:{{type:'volume'}}, priceScaleId:'vol' }});
+chart.priceScale('vol').applyOptions({{ scaleMargins:{{top:0.78, bottom:0}}, visible:false }});
+vSeries.setData(volData);
+
+let s21, s50, s100;
+if (ema21Data.length) {{
+  s21 = chart.addLineSeries({{ color:'#f8c518', lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false }});
+  s21.setData(ema21Data);
+}}
+if (ema50Data.length) {{
+  s50 = chart.addLineSeries({{ color:'#58a6ff', lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false }});
+  s50.setData(ema50Data);
+}}
+if (ema100Data.length) {{
+  s100 = chart.addLineSeries({{ color:'#bc8cff', lineWidth:1.5, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false }});
+  s100.setData(ema100Data);
+}}
+
+chart.subscribeCrosshairMove(param => {{
+  const bar = param.seriesData && param.seriesData.get(cSeries);
+  if (!bar || !param.time) return;
+  const pc  = prevCloseMap[param.time];
+  const chg = pc !== undefined ? bar.close - pc : 0;
+  const pct = pc ? chg / pc * 100 : 0;
+  const clr = chg >= 0 ? '#56d364' : '#f85149';
+  const sgn = chg >= 0 ? '+' : '';
+  const vb  = param.seriesData.get(vSeries);
+  const e21  = s21  ? (param.seriesData.get(s21)?.value?.toFixed(2)  ?? '—') : '—';
+  const e50  = s50  ? (param.seriesData.get(s50)?.value?.toFixed(2)  ?? '—') : '—';
+  const e100 = s100 ? (param.seriesData.get(s100)?.value?.toFixed(2) ?? '—') : '—';
+  document.getElementById('io').textContent  = bar.open.toFixed(2);
+  document.getElementById('ih').textContent  = bar.high.toFixed(2);
+  document.getElementById('il').textContent  = bar.low.toFixed(2);
+  const ce = document.getElementById('ic'); ce.textContent = bar.close.toFixed(2); ce.style.color = clr;
+  const ge = document.getElementById('ig'); ge.textContent = sgn+chg.toFixed(2)+' ('+sgn+pct.toFixed(2)+'%)'; ge.style.color = clr;
+  document.getElementById('iv').textContent   = vb ? fmtVol(vb.value) : '—';
+  document.getElementById('ie21').textContent  = e21;
+  document.getElementById('ie50').textContent  = e50;
+  document.getElementById('ie100').textContent = e100;
+}});
+
+chart.timeScale().fitContent();
+new ResizeObserver(() => {{
+  const w = document.getElementById('chart').clientWidth;
+  chart.applyOptions({{ width: w }});
+}}).observe(document.getElementById('chart'));
+</script></body></html>"""
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -201,14 +504,30 @@ st.sidebar.caption("Data: Yahoo Finance via yfinance · Walk-forward, no look-ah
 # ═════════════════════════════════════════════════════════════════════════════
 if page == "Daniel's Breakout":
     st.title("Daniel's Breakout")
-    tab_screen, tab_bt, tab_pf = st.tabs([
+    tab_screen, tab_pf = st.tabs([
         "📊  Screener",
-        "📈  Single-Ticker Backtest",
         "💼  Portfolio Backtest",
     ])
 
     # ── Screener ─────────────────────────────────────────────────────────────
     with tab_screen:
+        with st.expander("📋 Screening Criteria", expanded=True):
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("""
+**EMA Momentum Stack**
+- **C1** Price > 21-day EMA
+- **C2** 21-day EMA ≥ 50-day EMA
+- **C3** 50-day EMA ≥ 100-day EMA
+""")
+            with c2:
+                st.markdown("""
+**Breakout & Volume**
+- **C4** Price at or above new 6-month high
+- **C5** Today's volume ≥ 1.5× 30-day average (rel vol surge)
+- **C6** 10-day average volume ≥ 1,000,000 shares (liquidity)
+""")
+
         col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
         with col1:
             d_uni_lbl = st.selectbox("Universe", list(UNIVERSE_OPTIONS), key="d_uni")
@@ -272,100 +591,20 @@ if page == "Daniel's Breakout":
             st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True, height=400)
 
             st.subheader("Candlestick Chart")
-            tickers_list = [r["Ticker"] for r in rows]
+            tickers_list = sorted(r["Ticker"] for r in rows)
             sel = st.selectbox("Select ticker to chart", tickers_list, key="d_sel")
             if sel:
                 df_c = st.session_state["d_data"].get(sel)
                 if df_c is not None and not df_c.empty:
                     close = df_c["Close"]
-                    st.plotly_chart(
-                        candlestick_chart(
-                            df_c, sel,
-                            ema21=close.ewm(span=21,  adjust=False).mean(),
-                            ema50=close.ewm(span=50,  adjust=False).mean(),
-                            ema100=close.ewm(span=100, adjust=False).mean(),
-                        ),
-                        use_container_width=True,
+                    ema21  = close.ewm(span=21,  adjust=False).mean()
+                    ema50  = close.ewm(span=50,  adjust=False).mean()
+                    ema100 = close.ewm(span=100, adjust=False).mean()
+                    components.html(
+                        candlestick_chart_html(df_c, sel, ema21, ema50, ema100),
+                        height=550,
+                        scrolling=False,
                     )
-
-    # ── Single-Ticker Backtest ────────────────────────────────────────────────
-    with tab_bt:
-        col1, col2, col3, col4, col5 = st.columns([1.5, 1, 1.5, 1, 1])
-        with col1:
-            d_bt_tkr = st.text_input("Ticker", "AAPL", key="d_bt_tkr").upper().strip()
-        with col2:
-            d_bt_per = st.selectbox("Period", list(PERIOD_LABELS.values()),
-                                     index=1, key="d_bt_per")
-            d_bt_days = next(d for d, l in PERIOD_LABELS.items() if l == d_bt_per)
-        with col3:
-            d_bt_exit = st.selectbox("Exit Mode", ["PCT_TRAIL", "SMA50", "ATR_TRAIL", "BOTH"], key="d_bt_exit")
-        with col4:
-            d_bt_trl = st.number_input("Trail %", 1.0, 50.0, 10.0, 0.5, key="d_bt_trl")
-        with col5:
-            st.write(""); st.write("")
-            d_bt_run = st.button("Run Backtest", type="primary", key="d_bt_run", use_container_width=True)
-
-        if d_bt_run:
-            with st.spinner(f"Backtesting {d_bt_tkr}…"):
-                df = fetch_ohlcv(d_bt_tkr, period_days=d_bt_days)
-                if df is None or df.empty or len(df) < 200:
-                    st.error(f"Insufficient data for {d_bt_tkr}")
-                else:
-                    res = run_daniels_backtest(df, d_bt_tkr, exit_mode=d_bt_exit, trail_pct=d_bt_trl)
-                    if res is None:
-                        st.error("Not enough trading bars to run backtest")
-                    else:
-                        st.session_state["d_bt_res"] = res
-
-        if "d_bt_res" in st.session_state:
-            r = st.session_state["d_bt_res"]
-            m1, m2, m3, m4, m5, m6 = st.columns(6)
-            m1.metric("Total Return",   fmt_pct(r.total_return_pct))
-            m2.metric("Buy & Hold",     fmt_pct(r.bh_return_pct))
-            m3.metric("Max Drawdown",   fmt_pct(r.max_drawdown_pct))
-            m4.metric("Win Rate",       fmt_pct(r.win_rate_pct))
-            m5.metric("Sharpe",         f"{r.sharpe_ratio:.2f}")
-            m6.metric("# Trades",       str(r.n_trades))
-
-            m2a, m2b, m2c = st.columns(3)
-            m2a.metric("Avg Win",   fmt_pct(getattr(r, "avg_win_pct",  None)))
-            m2b.metric("Avg Loss",  fmt_pct(getattr(r, "avg_loss_pct", None)))
-            m2c.metric("BH Max DD", fmt_pct(getattr(r, "bh_max_drawdown_pct", None)))
-
-            st.plotly_chart(equity_chart(r.equity_curve), use_container_width=True)
-
-            if r.trades:
-                # Filters
-                fc1, fc2 = st.columns(2)
-                with fc1:
-                    f_reason = st.selectbox(
-                        "Exit Reason",
-                        ["ALL"] + sorted({t.exit_reason for t in r.trades}),
-                        key="d_bt_f_reason",
-                    )
-                with fc2:
-                    f_result = st.selectbox("Result", ["ALL", "Win", "Loss"], key="d_bt_f_result")
-
-                trade_rows = []
-                for t in r.trades:
-                    if f_reason != "ALL" and t.exit_reason != f_reason:
-                        continue
-                    if f_result == "Win"  and t.pnl_pct <= 0:
-                        continue
-                    if f_result == "Loss" and t.pnl_pct >= 0:
-                        continue
-                    trade_rows.append({
-                        "Entry Date":  t.entry_date,
-                        "Exit Date":   t.exit_date,
-                        "Entry Price": t.entry_price,
-                        "Exit Price":  t.exit_price,
-                        "P&L %":       round(t.pnl_pct, 2),
-                        "Days Held":   t.days_held,
-                        "Exit Reason": t.exit_reason,
-                    })
-                st.subheader(f"Trade Log ({len(trade_rows)} shown)")
-                st.dataframe(pd.DataFrame(trade_rows), use_container_width=True,
-                             hide_index=True, height=350)
 
     # ── Portfolio Backtest ────────────────────────────────────────────────────
     with tab_pf:
@@ -399,7 +638,7 @@ if page == "Daniel's Breakout":
                                        key="pf_rebal")
             pf_capital = st.number_input("Initial Capital ($)", 1_000, 10_000_000, 100_000, 1_000, key="pf_capital")
         with col4:
-            pf_start   = st.date_input("Start Date", date.today() - timedelta(days=730), key="pf_start")
+            pf_start   = st.date_input("Start Date", date(2016, 4, 1), key="pf_start")
             pf_end     = st.date_input("End Date",   date.today(), key="pf_end")
 
         if st.button("Run Portfolio Backtest", type="primary", key="pf_run", use_container_width=False):
@@ -475,8 +714,54 @@ if page == "Daniel's Breakout":
                     f"{r.n_trades} trades · Ranked by {pf_rank}"
                 )
 
-            st.plotly_chart(equity_chart(r.equity_curve, r.bh_curve, bm),
-                            use_container_width=True)
+            components.html(
+                equity_chart_html(r.equity_curve, r.bh_curve, bm),
+                height=380,
+                scrolling=False,
+            )
+
+            # Annual P&L table
+            if r.equity_curve and len(r.equity_curve) > 1:
+                import pandas as _pd2
+                ec = _pd2.DataFrame(r.equity_curve)
+                ec["date"] = _pd2.to_datetime(ec["date"])
+                ec = ec.set_index("date").sort_index()
+                bh = _pd2.DataFrame(r.bh_curve)
+                bh["date"] = _pd2.to_datetime(bh["date"])
+                bh = bh.set_index("date").sort_index()
+                annual_rows = []
+                for year in sorted(ec.index.year.unique()):
+                    yr = ec[ec.index.year == year]
+                    if yr.empty:
+                        continue
+                    prev = ec[ec.index.year < year]
+                    start = prev["value"].iloc[-1] if not prev.empty else yr["value"].iloc[0]
+                    strat_ret = (yr["value"].iloc[-1] / start - 1) * 100
+                    bh_yr   = bh[bh.index.year == year]
+                    bh_prev = bh[bh.index.year < year]
+                    bh_start = bh_prev["value"].iloc[-1] if not bh_prev.empty else (bh_yr["value"].iloc[0] if not bh_yr.empty else None)
+                    bh_ret = ((bh_yr["value"].iloc[-1] / bh_start - 1) * 100) if (bh_start is not None and not bh_yr.empty) else None
+                    partial = yr.index[0].month > 1 or yr.index[-1].month < 12
+                    annual_rows.append({
+                        "Year":       str(year) + (" *" if partial else ""),
+                        "Strategy %": round(strat_ret, 1),
+                        f"{bm} %":    round(bh_ret, 1) if bh_ret is not None else None,
+                        "Alpha %":    round(strat_ret - bh_ret, 1) if bh_ret is not None else None,
+                    })
+
+                def _color_annual(val):
+                    if isinstance(val, (int, float)):
+                        if val > 0: return "color: #56d364; font-weight: 600"
+                        if val < 0: return "color: #f85149; font-weight: 600"
+                    return ""
+
+                ann_df = pd.DataFrame(annual_rows)
+                styled_ann = ann_df.style.map(_color_annual, subset=["Strategy %", f"{bm} %", "Alpha %"])
+                st.subheader("Annual P&L")
+                st.dataframe(styled_ann, use_container_width=True, hide_index=True,
+                             height=min(len(annual_rows), 20) * 35 + 38)
+                if any("*" in str(row["Year"]) for row in annual_rows):
+                    st.caption("\\* Partial year (strategy started or ended mid-year)")
 
             # Trade log with filters
             if r.trades:
@@ -497,7 +782,7 @@ if page == "Daniel's Breakout":
                     st.caption(f"{r.n_trades} total")
 
                 trade_rows = []
-                for t in r.trades:
+                for i, t in enumerate(r.trades, 1):
                     if pf_f_tkr and pf_f_tkr not in t.ticker:
                         continue
                     if pf_f_reas != "ALL" and t.exit_reason != pf_f_reas:
@@ -507,6 +792,7 @@ if page == "Daniel's Breakout":
                     if pf_f_res == "Loss" and t.pnl_pct >= 0:
                         continue
                     trade_rows.append({
+                        "#":           i,
                         "Ticker":      t.ticker,
                         "Entry Date":  t.entry_date,
                         "Exit Date":   t.exit_date,
@@ -516,8 +802,8 @@ if page == "Daniel's Breakout":
                         "Days Held":   t.days_held,
                         "Exit Reason": t.exit_reason,
                     })
-                st.dataframe(pd.DataFrame(trade_rows), use_container_width=True,
-                             hide_index=True, height=400)
+                st.dataframe(style_trade_log(pd.DataFrame(trade_rows)), use_container_width=True,
+                             hide_index=True, height=min(len(trade_rows), 20) * 35 + 38)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -525,9 +811,25 @@ if page == "Daniel's Breakout":
 # ═════════════════════════════════════════════════════════════════════════════
 elif page == "Turtle Trading":
     st.title("Turtle Trading")
-    tab_screen, tab_bt = st.tabs(["📊  Screener", "📈  Backtest"])
+    tab_screen, = st.tabs(["📊  Screener"])
 
     with tab_screen:
+        with st.expander("📋 Screening Criteria", expanded=True):
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("""
+**Entry Signals**
+- **S1** Price breaks above the 20-day Donchian high *(short-term)*
+- **S2** Price breaks above the 55-day Donchian high *(long-term)*
+""")
+            with c2:
+                st.markdown("""
+**Exit Rules**
+- **S1** Exit when price drops below the 10-day Donchian low
+- **S2** Exit when price drops below the 20-day Donchian low
+- Both systems use ATR(20) as a hard stop reference
+""")
+
         col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
         with col1:
             t_uni_lbl = st.selectbox("Universe", list(UNIVERSE_OPTIONS), key="t_uni")
@@ -587,63 +889,36 @@ elif page == "Turtle Trading":
             st.caption(f"**{signals}** signals · **{len(rows)}** total")
             st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True, height=500)
 
-    with tab_bt:
-        col1, col2, col3, col4 = st.columns([1.5, 1, 1, 1])
-        with col1:
-            t_bt_tkr = st.text_input("Ticker", "AAPL", key="t_bt_tkr").upper().strip()
-        with col2:
-            t_bt_per = st.selectbox("Period", list(PERIOD_LABELS.values()), index=1, key="t_bt_per")
-            t_bt_days = next(d for d, l in PERIOD_LABELS.items() if l == t_bt_per)
-        with col3:
-            t_bt_sys = st.selectbox("System", ["S2", "S1", "BOTH"], key="t_bt_sys")
-        with col4:
-            st.write(""); st.write("")
-            t_bt_run = st.button("Run Backtest", type="primary", key="t_bt_run", use_container_width=True)
-
-        if t_bt_run:
-            with st.spinner(f"Backtesting {t_bt_tkr}…"):
-                df = fetch_ohlcv(t_bt_tkr, period_days=t_bt_days)
-                if df is None or df.empty or len(df) < 120:
-                    st.error(f"Insufficient data for {t_bt_tkr}")
-                else:
-                    res = run_turtle_backtest(df, t_bt_tkr, system=t_bt_sys)
-                    if res is None:
-                        st.error("Not enough trading bars")
-                    else:
-                        st.session_state["t_bt_res"] = res
-
-        if "t_bt_res" in st.session_state:
-            r = st.session_state["t_bt_res"]
-            m1, m2, m3, m4, m5 = st.columns(5)
-            m1.metric("Total Return",  fmt_pct(r.total_return_pct))
-            m2.metric("Buy & Hold",    fmt_pct(r.bh_return_pct))
-            m3.metric("Max Drawdown",  fmt_pct(r.max_drawdown_pct))
-            m4.metric("Win Rate",      fmt_pct(r.win_rate_pct))
-            m5.metric("Sharpe",        f"{r.sharpe_ratio:.2f}")
-            st.plotly_chart(equity_chart(r.equity_curve), use_container_width=True)
-            if r.trades:
-                trade_rows = [{
-                    "Entry Date":  t.entry_date,
-                    "Exit Date":   t.exit_date,
-                    "Entry Price": t.entry_price,
-                    "Exit Price":  t.exit_price,
-                    "P&L %":       round(t.pnl_pct, 2),
-                    "Days Held":   t.days_held,
-                    "System":      getattr(t, "system", ""),
-                    "Exit Reason": t.exit_reason,
-                } for t in r.trades]
-                st.dataframe(pd.DataFrame(trade_rows), use_container_width=True,
-                             hide_index=True, height=350)
-
 
 # ═════════════════════════════════════════════════════════════════════════════
 # MINERVINI SEPA
 # ═════════════════════════════════════════════════════════════════════════════
 elif page == "Minervini SEPA":
     st.title("Minervini SEPA")
-    tab_screen, tab_bt = st.tabs(["📊  Screener", "📈  Backtest"])
+    tab_screen, = st.tabs(["📊  Screener"])
 
     with tab_screen:
+        with st.expander("📋 Screening Criteria", expanded=True):
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("""
+**Trend Template (C1–C5)**
+- **C1** Price > 150-day MA and Price > 200-day MA
+- **C2** 150-day MA > 200-day MA
+- **C3** 200-day MA trending up (above level 1 month ago)
+- **C4** 50-day MA > 150-day MA and 50-day MA > 200-day MA
+- **C5** Price > 50-day MA
+""")
+            with c2:
+                st.markdown("""
+**Price Structure & Strength (C6–C9)**
+- **C6** Price within 25% of 52-week high (≥ 75% of high)
+- **C7** Price at least 30% above 52-week low
+- **C8** RS Rating > 85 (top 15% of universe by 12-month return)
+- **C9** Relative Volume ≥ 1.5× (today vs 30-day average)
+- **Pre-filter** 10-day avg volume ≥ 1,000,000 shares
+""")
+
         col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
         with col1:
             mv_uni_lbl = st.selectbox("Universe", list(UNIVERSE_OPTIONS), key="mv_uni")
@@ -719,52 +994,4 @@ elif page == "Minervini SEPA":
             st.caption(f"**{passes}** full passes · **{len(rows)}** total")
             st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True, height=500)
 
-    with tab_bt:
-        col1, col2, col3, col4, col5 = st.columns([1.5, 1, 1.5, 1, 1])
-        with col1:
-            mv_bt_tkr = st.text_input("Ticker", "AAPL", key="mv_bt_tkr").upper().strip()
-        with col2:
-            mv_bt_per = st.selectbox("Period", list(PERIOD_LABELS.values()), index=1, key="mv_bt_per")
-            mv_bt_days = next(d for d, l in PERIOD_LABELS.items() if l == mv_bt_per)
-        with col3:
-            mv_bt_exit = st.selectbox("Exit Mode", ["SMA50", "PCT_TRAIL", "ATR_TRAIL", "BOTH"], key="mv_bt_exit")
-        with col4:
-            mv_bt_trl = st.number_input("Trail %", 1.0, 50.0, 8.0, 0.5, key="mv_bt_trl")
-        with col5:
-            st.write(""); st.write("")
-            mv_bt_run = st.button("Run Backtest", type="primary", key="mv_bt_run", use_container_width=True)
-
-        if mv_bt_run:
-            with st.spinner(f"Backtesting {mv_bt_tkr}…"):
-                df = fetch_ohlcv(mv_bt_tkr, period_days=mv_bt_days)
-                if df is None or df.empty or len(df) < 300:
-                    st.error(f"Insufficient data for {mv_bt_tkr}")
-                else:
-                    res = run_minervini_backtest(df, mv_bt_tkr, exit_mode=mv_bt_exit, trail_pct=mv_bt_trl)
-                    if res is None:
-                        st.error("Not enough trading bars")
-                    else:
-                        st.session_state["mv_bt_res"] = res
-
-        if "mv_bt_res" in st.session_state:
-            r = st.session_state["mv_bt_res"]
-            m1, m2, m3, m4, m5 = st.columns(5)
-            m1.metric("Total Return",  fmt_pct(r.total_return_pct))
-            m2.metric("Buy & Hold",    fmt_pct(r.bh_return_pct))
-            m3.metric("Max Drawdown",  fmt_pct(r.max_drawdown_pct))
-            m4.metric("Win Rate",      fmt_pct(r.win_rate_pct))
-            m5.metric("Sharpe",        f"{r.sharpe_ratio:.2f}")
-            st.plotly_chart(equity_chart(r.equity_curve), use_container_width=True)
-            if r.trades:
-                trade_rows = [{
-                    "Entry Date":  t.entry_date,
-                    "Exit Date":   t.exit_date,
-                    "Entry Price": t.entry_price,
-                    "Exit Price":  t.exit_price,
-                    "P&L %":       round(t.pnl_pct, 2),
-                    "Days Held":   t.days_held,
-                    "Exit Reason": t.exit_reason,
-                } for t in r.trades]
-                st.dataframe(pd.DataFrame(trade_rows), use_container_width=True,
-                             hide_index=True, height=350)
 

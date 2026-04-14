@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { runDanielsScreen, fetchChart, runDanielsBacktest, runDanielsPortfolioBacktest } from "../api/screener";
+import { runDanielsScreen, fetchChart, runDanielsPortfolioBacktest } from "../api/screener";
 import CandlestickChart from "../components/CandlestickChart";
 import EquityChart from "../components/EquityChart";
 import { exportCsv, today } from "../utils/exportCsv";
@@ -119,7 +119,7 @@ function MetricCard({ label, value, color }) {
 }
 
 export default function DanielsBreakoutScreener() {
-  const [mode, setMode] = useState("screen");  // "screen" | "backtest" | "portfolio"
+  const [mode, setMode] = useState("screen");  // "screen" | "portfolio"
 
   // Screen state
   const [universe, setUniverse] = useState("sp500");
@@ -134,18 +134,6 @@ export default function DanielsBreakoutScreener() {
   const [tickersCopied, setTickersCopied] = useState(false);
   const [viewRating, setViewRating] = useState("ALL");
   const [viewRelVol, setViewRelVol] = useState("ALL");
-
-  // Backtest state
-  const [btTickerInput, setBtTickerInput] = useState("");
-  const [btTicker, setBtTicker] = useState(null);
-  const [btData, setBtData] = useState(null);
-  const [btChartData, setBtChartData] = useState(null);
-  const [btLoading, setBtLoading] = useState(false);
-  const [btPeriod, setBtPeriod] = useState(730);
-  const [btExitMode, setBtExitMode] = useState("SMA50");
-  const [btTrailPct, setBtTrailPct] = useState(10);
-  const [btError, setBtError] = useState(null);
-  const [btExitReasonFilter, setBtExitReasonFilter] = useState("ALL");
 
   // Portfolio backtest state
   const [pfPeriod, setPfPeriod] = useState(730);
@@ -170,7 +158,6 @@ export default function DanielsBreakoutScreener() {
     setError(null);
     setResponse(null);
     setSelectedTicker(null);
-    setBtTicker(null);
     setViewRating("ALL");
     setViewRelVol("ALL");
     try {
@@ -193,29 +180,6 @@ export default function DanielsBreakoutScreener() {
       setChartData(null);
     } finally {
       setChartLoading(false);
-    }
-  }
-
-  async function startBacktest(ticker, period, exitMode, trailPct) {
-    setBtTicker(ticker);
-    setBtData(null);
-    setBtChartData(null);
-    setBtError(null);
-    setBtExitReasonFilter("ALL");
-    setBtLoading(true);
-    try {
-      const [btResult, chartResult] = await Promise.all([
-        runDanielsBacktest(ticker, period, exitMode, trailPct),
-        fetchChart(ticker, period + 70),   // +70 cal days ≈ 50 trading days SMA warm-up
-      ]);
-      setBtData(btResult);
-      setBtChartData(chartResult);
-    } catch (e) {
-      setBtData(null);
-      setBtChartData(null);
-      setBtError(e.message || "Backtest failed");
-    } finally {
-      setBtLoading(false);
     }
   }
 
@@ -263,12 +227,12 @@ export default function DanielsBreakoutScreener() {
     return "#8b949e";
   };
 
-  const exitModeLabel = (mode, pct) => {
-    if (mode === "SMA50")     return "Exit: Close below SMA50";
-    if (mode === "ATR_TRAIL") return "Exit: 2× ATR(20) trailing stop";
-    if (mode === "PCT_TRAIL") return `Exit: ${pct}% trailing stop from peak`;
-    if (mode === "BOTH")      return "Exit: SMA50 or ATR(20) trailing stop (first hit)";
-    return mode;
+  const exitModeLabel = (m, pct) => {
+    if (m === "SMA50")     return "Exit: Close below SMA50";
+    if (m === "ATR_TRAIL") return "Exit: 2× ATR(20) trailing stop";
+    if (m === "PCT_TRAIL") return `Exit: ${pct}% trailing stop from peak`;
+    if (m === "BOTH")      return "Exit: SMA50 or ATR(20) trailing stop (first hit)";
+    return m;
   };
 
   // ── CSS for three-dot pulse animation ──
@@ -295,159 +259,6 @@ export default function DanielsBreakoutScreener() {
     .pf-spinner span:nth-child(3) { animation-delay: 0.4s; }
   `;
 
-  // ── Backtest results panel (shared between Screen BT button & Backtest mode) ──
-  const BacktestPanel = () => !btTicker ? null : (
-    <div style={{ background: "#161b22", border: "1px solid #30363d", borderRadius: 8, padding: 16, marginBottom: 20 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
-        <h3 style={{ margin: 0 }}>Backtest — {btTicker}</h3>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <select value={btPeriod} onChange={e => setBtPeriod(Number(e.target.value))} style={selectStyle}>
-            <option value={365}>1 year</option>
-            <option value={730}>2 years</option>
-            <option value={1095}>3 years</option>
-            <option value={1825}>5 years</option>
-          </select>
-          <select value={btExitMode} onChange={e => setBtExitMode(e.target.value)} style={selectStyle}>
-            <option value="BOTH">SMA50 + ATR Stop</option>
-            <option value="SMA50">SMA50 only</option>
-            <option value="ATR_TRAIL">ATR Stop only</option>
-            <option value="PCT_TRAIL">Trailing Stop (%)</option>
-          </select>
-          {btExitMode === "PCT_TRAIL" && (
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <input
-                type="number"
-                min={1} max={50} step={1}
-                value={btTrailPct}
-                onChange={e => setBtTrailPct(Number(e.target.value))}
-                style={{ ...selectStyle, width: 54, textAlign: "center" }}
-              />
-              <span style={{ color: "#8b949e", fontSize: 13 }}>%</span>
-            </div>
-          )}
-          <button
-            onClick={() => startBacktest(btTicker, btPeriod, btExitMode, btTrailPct)}
-            disabled={btLoading}
-            style={{
-              padding: "4px 12px", borderRadius: 6, border: "none",
-              background: btLoading ? "#388bfd88" : "#1f6feb", color: "#fff",
-              fontWeight: 700, fontSize: 13, cursor: btLoading ? "not-allowed" : "pointer",
-            }}
-          >
-            {btLoading ? "Running…" : "Re-run"}
-          </button>
-          <button onClick={() => setBtTicker(null)} style={{ background: "none", border: "none", color: "#8b949e", cursor: "pointer", fontSize: 18 }}>×</button>
-        </div>
-      </div>
-
-      {btLoading && <p style={{ color: "#8b949e" }}>Running backtest…</p>}
-      {btError && !btLoading && (
-        <p style={{ color: "#f85149", fontSize: 13 }}>Error: {btError}</p>
-      )}
-
-      {btData && !btLoading && (
-        <>
-          <div style={{ marginBottom: 12, padding: "6px 10px", background: "#0d1117", borderRadius: 6, border: "1px solid #21262d", fontSize: 12, color: "#58a6ff" }}>
-            {exitModeLabel(btData.exit_mode, btTrailPct)}
-          </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
-            <MetricCard label="Total Return" value={fmtPct(btData.total_return_pct)} color={pctColor(btData.total_return_pct)} />
-            <MetricCard label="B&H Return"   value={fmtPct(btData.bh_return_pct)}    color={pctColor(btData.bh_return_pct)} />
-            <MetricCard label="Alpha"        value={fmtPct(btData.total_return_pct - btData.bh_return_pct)} color={pctColor(btData.total_return_pct - btData.bh_return_pct)} />
-            <MetricCard label="Max Drawdown" value={`${btData.max_drawdown_pct.toFixed(1)}%`} color={btData.max_drawdown_pct < -20 ? "#f85149" : btData.max_drawdown_pct < -10 ? "#e3b341" : "#8b949e"} />
-            <MetricCard label="Win Rate"     value={`${btData.win_rate_pct.toFixed(1)}%`}    color={btData.win_rate_pct >= 50 ? "#56d364" : "#f85149"} />
-            <MetricCard label="Sharpe"       value={btData.sharpe_ratio.toFixed(2)}           color={btData.sharpe_ratio >= 1 ? "#56d364" : btData.sharpe_ratio >= 0 ? "#e3b341" : "#f85149"} />
-            <MetricCard label="Trades"       value={btData.n_trades} />
-            <MetricCard label="Avg Trade"    value={fmtPct(btData.avg_trade_pnl_pct)} color={pctColor(btData.avg_trade_pnl_pct)} />
-          </div>
-
-          {/* Candlestick chart with entry (B) / exit (S) markers */}
-          {btChartData && btChartData.length > 0 && (() => {
-            const markers = btData.trades.flatMap(t => [
-              { date: t.entry_date, type: "entry", pnl: t.pnl_pct },
-              { date: t.exit_date,  type: "exit",  pnl: t.pnl_pct },
-            ]);
-            return (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 11, color: "#8b949e", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>
-                  Price Chart — <span style={{ color: "#58a6ff" }}>B</span> entry &nbsp;
-                  <span style={{ color: "#56d364" }}>S</span> exit (win) &nbsp;
-                  <span style={{ color: "#f85149" }}>S</span> exit (loss)
-                </div>
-                <CandlestickChart data={btChartData} markers={markers} showVolume trimStart={50} />
-              </div>
-            );
-          })()}
-
-          {btData.trades.length === 0 ? (
-            <p style={{ color: "#8b949e", fontSize: 13 }}>No trades triggered in this period.</p>
-          ) : (() => {
-            const btExitReasons = ["ALL", ...Array.from(new Set(btData.trades.map(t => t.exit_reason))).sort()];
-            const btFiltered = btData.trades.filter(t =>
-              btExitReasonFilter === "ALL" || t.exit_reason === btExitReasonFilter
-            );
-            return (
-            <div style={{ background: "#161b22", border: "1px solid #30363d", borderRadius: 8, overflow: "hidden" }}>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "10px 12px 8px", flexWrap: "wrap", borderBottom: "1px solid #21262d" }}>
-                <span style={{ fontSize: 11, color: "#8b949e", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                  Trade Log ({btFiltered.length}/{btData.trades.length})
-                </span>
-                <select value={btExitReasonFilter} onChange={e => setBtExitReasonFilter(e.target.value)} style={{ ...selectStyle, fontSize: 12, padding: "3px 8px" }}>
-                  {btExitReasons.map(r => <option key={r} value={r}>{r === "ALL" ? "All exits" : r}</option>)}
-                </select>
-                {btExitReasonFilter !== "ALL" && (
-                  <button onClick={() => setBtExitReasonFilter("ALL")}
-                    style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, border: "1px solid #30363d", background: "transparent", color: "#8b949e", cursor: "pointer" }}>
-                    Clear
-                  </button>
-                )}
-              </div>
-              <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: 693 }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                <thead>
-                  <tr>
-                    {["#", "Entry Date", "Exit Date", "Entry $", "Exit $", "PnL %", "Days", "Exit Reason"].map(h => (
-                      <th key={h} style={{ ...th, fontSize: 10, position: "sticky", top: 0, zIndex: 1, background: "#161b22" }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {btFiltered.map((t, i) => (
-                    <tr key={i} style={{ background: t.pnl_pct > 0 ? "#0d2b0d" : t.pnl_pct < 0 ? "#2d1b1b" : "transparent" }}>
-                      <td style={td}>{i + 1}</td>
-                      <td style={{ ...td, color: "#8b949e" }}>{t.entry_date}</td>
-                      <td style={{ ...td, color: "#8b949e" }}>{t.exit_date}</td>
-                      <td style={td}>${t.entry_price.toFixed(2)}</td>
-                      <td style={td}>${t.exit_price.toFixed(2)}</td>
-                      <td style={{ ...td, fontWeight: 700, color: pctColor(t.pnl_pct) }}>{fmtPct(t.pnl_pct)}</td>
-                      <td style={{ ...td, color: "#8b949e" }}>{t.days_held}d</td>
-                      <td style={td}>
-                        <span style={{
-                          padding: "2px 6px", borderRadius: 4, fontSize: 11, fontWeight: 700,
-                          color: exitColor(t.exit_reason),
-                          background: exitColor(t.exit_reason) + "22",
-                          border: `1px solid ${exitColor(t.exit_reason)}55`,
-                        }}>
-                          {t.exit_reason}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              </div>
-            </div>
-            );
-          })()}
-        </>
-      )}
-
-      {!btData && !btLoading && (
-        <p style={{ color: "#f85149", fontSize: 13 }}>Failed to load backtest data.</p>
-      )}
-    </div>
-  );
-
   return (
     <div>
       <style>{runnerStyle}</style>
@@ -461,7 +272,6 @@ export default function DanielsBreakoutScreener() {
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           <ModeTab active={mode === "screen"}    onClick={() => setMode("screen")}>Screen</ModeTab>
-          <ModeTab active={mode === "backtest"}  onClick={() => setMode("backtest")}>Backtest</ModeTab>
           <ModeTab active={mode === "portfolio"} onClick={() => setMode("portfolio")}>Portfolio BT</ModeTab>
         </div>
       </div>
@@ -588,9 +398,6 @@ export default function DanielsBreakoutScreener() {
             </div>
           )}
 
-          {/* Backtest panel (triggered from BT button in results table) */}
-          <BacktestPanel />
-
           {/* Results table */}
           {response && visibleResults.length > 0 && (
             <div style={{ background: "#161b22", border: "1px solid #30363d", borderRadius: 8, overflow: "hidden" }}>
@@ -598,7 +405,7 @@ export default function DanielsBreakoutScreener() {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
-                      {["Ticker", "Chg %", "Rel Vol", "Vol", "Mkt Cap", "EPS", "Sector", "Rating", "Met", "Close", "EMA21", "EMA50", "EMA100", "6m High", "Avg Vol 10d", "BT"].map(h => (
+                      {["Ticker", "Chg %", "Rel Vol", "Vol", "Mkt Cap", "EPS", "Sector", "Rating", "Met", "Close", "EMA21", "EMA50", "EMA100", "6m High", "Avg Vol 10d"].map(h => (
                         <th key={h} style={th}>{h}</th>
                       ))}
                     </tr>
@@ -627,20 +434,6 @@ export default function DanielsBreakoutScreener() {
                         <td style={{ ...td, color: r.c3 ? "#56d364" : "#8b949e" }}>${r.ema100.toFixed(2)}</td>
                         <td style={{ ...td, color: r.c4 ? "#56d364" : "#e3b341" }}>${r.high_6m.toFixed(2)}</td>
                         <td style={{ ...td, color: r.c6 ? "#56d364" : "#f85149", fontSize: 12 }}>{fmtVol(r.avg_vol_10d)}</td>
-                        <td style={{ ...td, textAlign: "center" }}>
-                          <button
-                            onClick={e => { e.stopPropagation(); startBacktest(r.ticker, btPeriod, btExitMode, btTrailPct); }}
-                            title={`Backtest ${r.ticker}`}
-                            style={{
-                              padding: "3px 8px", borderRadius: 5, border: "1px solid #30363d",
-                              background: btTicker === r.ticker ? "#1f3a5f" : "#21262d",
-                              color: btTicker === r.ticker ? "#58a6ff" : "#8b949e",
-                              cursor: "pointer", fontSize: 12, fontWeight: 700,
-                            }}
-                          >
-                            BT
-                          </button>
-                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -654,69 +447,6 @@ export default function DanielsBreakoutScreener() {
               No stocks met {minCriteria}/6 criteria in this batch.{minCriteria === 6 && " Try lowering the minimum criteria or increasing the ticker count."}
             </div>
           )}
-        </>
-      )}
-
-      {/* ── BACKTEST MODE ────────────────────────────────────────────────── */}
-      {mode === "backtest" && (
-        <>
-          {/* Ticker input + controls */}
-          <div style={{ background: "#161b22", border: "1px solid #30363d", borderRadius: 8, padding: 16, marginBottom: 20 }}>
-            <div style={{ fontSize: 11, color: "#8b949e", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
-              Backtest Daniel's Strategy on Any Ticker
-            </div>
-            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-              <input
-                value={btTickerInput}
-                onChange={e => setBtTickerInput(e.target.value.toUpperCase())}
-                onKeyDown={e => { if (e.key === "Enter" && btTickerInput.trim()) startBacktest(btTickerInput.trim(), btPeriod, btExitMode, btTrailPct); }}
-                placeholder="Ticker (e.g. AAPL)"
-                style={{
-                  background: "#0d1117", color: "#e6edf3", border: "1px solid #30363d",
-                  borderRadius: 6, padding: "6px 10px", fontSize: 14, width: 140,
-                  fontFamily: "inherit",
-                }}
-              />
-              <select value={btPeriod} onChange={e => setBtPeriod(Number(e.target.value))} style={selectStyle}>
-                <option value={365}>1 year</option>
-                <option value={730}>2 years</option>
-                <option value={1095}>3 years</option>
-                <option value={1825}>5 years</option>
-              </select>
-              <select value={btExitMode} onChange={e => setBtExitMode(e.target.value)} style={selectStyle}>
-                <option value="BOTH">SMA50 + ATR Stop</option>
-                <option value="SMA50">SMA50 only</option>
-                <option value="ATR_TRAIL">ATR Stop only</option>
-                <option value="PCT_TRAIL">Trailing Stop (%)</option>
-              </select>
-              {btExitMode === "PCT_TRAIL" && (
-                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <input
-                    type="number"
-                    min={1} max={50} step={1}
-                    value={btTrailPct}
-                    onChange={e => setBtTrailPct(Number(e.target.value))}
-                    style={{ ...selectStyle, width: 54, textAlign: "center" }}
-                  />
-                  <span style={{ color: "#8b949e", fontSize: 13 }}>%</span>
-                </div>
-              )}
-              <button
-                onClick={() => { if (btTickerInput.trim()) startBacktest(btTickerInput.trim(), btPeriod, btExitMode, btTrailPct); }}
-                disabled={btLoading || !btTickerInput.trim()}
-                style={{
-                  padding: "6px 18px", borderRadius: 6, border: "none",
-                  background: (btLoading || !btTickerInput.trim()) ? "#388bfd88" : "#238636", color: "#fff",
-                  fontWeight: 700, fontSize: 14, cursor: (btLoading || !btTickerInput.trim()) ? "not-allowed" : "pointer",
-                }}
-              >
-                {btLoading ? "Running…" : "Run Backtest"}
-              </button>
-            </div>
-          </div>
-
-          {/* Reuse the same backtest results panel */}
-          <BacktestPanel />
         </>
       )}
 
@@ -949,6 +679,59 @@ export default function DanielsBreakoutScreener() {
                 <div style={{ fontSize: 12, color: "#8b949e", marginBottom: 8 }}>Portfolio equity curve vs {pfData.benchmark_ticker} B&amp;H</div>
                 <EquityChart data={pfData.equity_curve} bhReturnPct={pfData.bh_return_pct} bhCurve={pfData.bh_curve} height={240} />
               </div>
+
+              {/* Annual P&L table */}
+              {pfData.equity_curve.length > 1 && (() => {
+                const ecByYear = {}, bhByYear = {};
+                pfData.equity_curve.forEach(pt => { const y = pt.date.slice(0,4); (ecByYear[y] = ecByYear[y] || []).push(pt); });
+                pfData.bh_curve.forEach(pt => { const y = pt.date.slice(0,4); (bhByYear[y] = bhByYear[y] || []).push(pt); });
+                const years = Object.keys(ecByYear).sort();
+                const rows = years.map(year => {
+                  const pts = ecByYear[year];
+                  const prev = ecByYear[String(Number(year) - 1)];
+                  const startVal = prev ? prev[prev.length - 1].value : pts[0].value;
+                  const stratRet = (pts[pts.length - 1].value / startVal - 1) * 100;
+                  const bhPts = bhByYear[year] || [];
+                  const bhPrev = bhByYear[String(Number(year) - 1)];
+                  const bhStart = bhPrev ? bhPrev[bhPrev.length - 1].value : (bhPts[0]?.value ?? null);
+                  const bhRet = bhStart && bhPts.length ? (bhPts[bhPts.length - 1].value / bhStart - 1) * 100 : null;
+                  const partial = parseInt(pts[0].date.slice(5,7)) > 1 || parseInt(pts[pts.length-1].date.slice(5,7)) < 12;
+                  return { year, stratRet, bhRet, alpha: bhRet !== null ? stratRet - bhRet : null, partial };
+                });
+                const hasPartial = rows.some(r => r.partial);
+                const fmtR = v => v === null ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
+                const rc = v => v === null ? "#8b949e" : v > 0 ? "#56d364" : v < 0 ? "#f85149" : "#8b949e";
+                const th = { padding: "7px 12px", textAlign: "right", fontSize: 11, color: "#8b949e", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #30363d", whiteSpace: "nowrap" };
+                const td = { padding: "7px 12px", textAlign: "right", fontSize: 13, whiteSpace: "nowrap", borderBottom: "1px solid #21262d" };
+                return (
+                  <div style={{ background: "#161b22", border: "1px solid #30363d", borderRadius: 8, padding: 16, marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, color: "#8b949e", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Annual P&amp;L</div>
+                    <div style={{ overflowY: "auto", maxHeight: 20 * 37 + 40 }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead>
+                          <tr>
+                            <th style={{ ...th, textAlign: "left" }}>Year</th>
+                            <th style={th}>Strategy</th>
+                            <th style={th}>{pfData.benchmark_ticker}</th>
+                            <th style={th}>Alpha</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rows.map(({ year, stratRet, bhRet, alpha, partial }) => (
+                            <tr key={year}>
+                              <td style={{ ...td, textAlign: "left", color: "#f0f6fc", fontWeight: 600 }}>{year}{partial ? " *" : ""}</td>
+                              <td style={{ ...td, color: rc(stratRet), fontWeight: 700 }}>{fmtR(stratRet)}</td>
+                              <td style={{ ...td, color: rc(bhRet),   fontWeight: 700 }}>{fmtR(bhRet)}</td>
+                              <td style={{ ...td, color: rc(alpha),   fontWeight: 700 }}>{fmtR(alpha)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {hasPartial && <div style={{ fontSize: 11, color: "#484f58", marginTop: 8 }}>* Partial year</div>}
+                  </div>
+                );
+              })()}
 
               {/* Exit reason breakdown */}
               {pfData.trades.length > 0 && (() => {
