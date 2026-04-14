@@ -2,6 +2,8 @@
 
 A multi-strategy stock screening and backtesting app. Available in two flavours — a **Streamlit** single-file app (simpler, no Node required) and a **React + FastAPI** app (polished UI with TradingView charts). Both use the same Python strategy backend.
 
+**Live app:** [daniel-stock-screeners.streamlit.app](https://daniel-stock-screeners.streamlit.app/)
+
 ![Dark-themed UI with strategy tabs, screener results, and equity curve charts]
 
 ## Strategies
