@@ -428,7 +428,7 @@ if page == "Daniel's Breakout":
             d_uni_lbl = st.selectbox("Universe", list(UNIVERSE_OPTIONS), key="d_uni")
             d_uni = UNIVERSE_OPTIONS[d_uni_lbl]
         with col2:
-            d_min = st.selectbox("Min Criteria", [6, 5, 4, 3, 2, 1], key="d_min")
+            d_min = st.selectbox("Min Criteria", [6, 5, 4, 3, 2, 1], index=1, key="d_min")
         with col3:
             d_max = st.number_input("Max Tickers", 50, 3000, 500, 50, key="d_max")
         with col4:
@@ -482,24 +482,32 @@ if page == "Daniel's Breakout":
         if "d_rows" in st.session_state:
             rows = st.session_state["d_rows"]
             passes = sum(1 for r in rows if r["Passes"] == "✓")
-            st.caption(f"**{passes}** full passes · **{len(rows)}** total matches")
-            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True, height=400)
+            if not rows:
+                st.warning(
+                    f"No stocks met ≥ {d_min}/6 criteria. "
+                    "Try lowering **Min Criteria** — in a broad market downturn "
+                    "C4 (new 6-month high) often fails across the board."
+                )
+            else:
+                st.caption(f"**{passes}** full passes · **{len(rows)}** total matches")
+                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True, height=400)
 
-            st.subheader("Candlestick Chart")
-            tickers_list = sorted(r["Ticker"] for r in rows)
-            sel = st.selectbox("Select ticker to chart", tickers_list, key="d_sel")
-            if sel:
-                df_c = st.session_state["d_data"].get(sel)
-                if df_c is not None and not df_c.empty:
-                    close = df_c["Close"]
-                    ema21  = close.ewm(span=21,  adjust=False).mean()
-                    ema50  = close.ewm(span=50,  adjust=False).mean()
-                    ema100 = close.ewm(span=100, adjust=False).mean()
-                    components.html(
-                        candlestick_chart_html(df_c, sel, ema21, ema50, ema100),
-                        height=550,
-                        scrolling=False,
-                    )
+            if rows:
+                st.subheader("Candlestick Chart")
+                tickers_list = sorted(r["Ticker"] for r in rows)
+                sel = st.selectbox("Select ticker to chart", tickers_list, key="d_sel")
+                if sel:
+                    df_c = st.session_state["d_data"].get(sel)
+                    if df_c is not None and not df_c.empty:
+                        close = df_c["Close"]
+                        ema21  = close.ewm(span=21,  adjust=False).mean()
+                        ema50  = close.ewm(span=50,  adjust=False).mean()
+                        ema100 = close.ewm(span=100, adjust=False).mean()
+                        components.html(
+                            candlestick_chart_html(df_c, sel, ema21, ema50, ema100),
+                            height=550,
+                            scrolling=False,
+                        )
 
     # ── Portfolio Backtest ────────────────────────────────────────────────────
     with tab_pf:
