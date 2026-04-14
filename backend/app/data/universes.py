@@ -112,13 +112,27 @@ def _fetch_futures() -> list[str]:
     ]
 
 
+_NASDAQ100_FALLBACK = [
+    "AAPL","MSFT","NVDA","AMZN","META","GOOGL","GOOG","TSLA","AVGO","COST",
+    "NFLX","AMD","ASML","ADBE","CSCO","TMUS","LIN","INTU","TXN","ISRG",
+    "QCOM","CMCSA","AMGN","AMAT","ARM","HON","MRVL","BKNG","MU","PEP",
+    "ADI","GILD","INTC","PANW","SBUX","LRCX","KLAC","MELI","MDLZ","ADP",
+    "SNPS","CDNS","CSGP","CEG","MAR","ORLY","PYPL","NXPI","PAYX","CRWD",
+    "MNST","MCHP","FTNT","CHTR","FAST","ROP","WDAY","IDXX","VRSK","ROST",
+    "ABNB","KDP","ODFL","DDOG","CTAS","BKR","CPRT","AXON","DXCM","EXC",
+    "PCAR","APP","PLTR","CSX","EA","DASH","GEHC","KHC","TTWO","REGN",
+    "FANG","XEL","AEP","TEAM","SHOP","ALNY","MSTR","CCEP","WDC","TRI",
+    "INSM","STX","FER","PDD","ADSK","MPWR","VRTX","WMT","WBD","CTSH","PDD",
+]
+
+
 def _fetch_nasdaq100() -> list[str]:
-    """Scrape NASDAQ-100 components from Wikipedia via httpx."""
+    """Scrape NASDAQ-100 components from Wikipedia; fall back to static list."""
     try:
         resp = httpx.get(
             "https://en.wikipedia.org/wiki/Nasdaq-100",
             headers=_WIKI_HEADERS,
-            timeout=20,
+            timeout=15,
             follow_redirects=True,
         )
         resp.raise_for_status()
@@ -129,9 +143,10 @@ def _fetch_nasdaq100() -> list[str]:
                 tickers = [t for t in tickers if t and len(t) <= 6]
                 if len(tickers) > 50:
                     return tickers
-        return []
     except Exception:
-        return []
+        pass
+    # Wikipedia blocked or unavailable — use static fallback list
+    return list(dict.fromkeys(_NASDAQ100_FALLBACK))  # deduplicate, preserve order
 
 
 def _fetch_ishares(fund: str) -> list[str]:
