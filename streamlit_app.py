@@ -10,8 +10,6 @@ import sys
 from datetime import date, timedelta
 
 import pandas as pd
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -203,109 +201,6 @@ new ResizeObserver(() => {{
   chart.applyOptions({{ width: document.getElementById('chart').clientWidth }});
 }}).observe(document.getElementById('chart'));
 </script></body></html>"""
-
-
-def candlestick_chart(df, ticker, ema21=None, ema50=None, ema100=None):
-    dates = df.index.astype(str).tolist()
-    closes = df["Close"].tolist()
-    opens  = df["Open"].tolist()
-
-    # Volume bar colors — semi-transparent like React version
-    vol_colors = [
-        "rgba(86,211,100,0.4)" if c >= o else "rgba(248,81,73,0.4)"
-        for c, o in zip(closes, opens)
-    ]
-
-    fig = make_subplots(
-        rows=2, cols=1,
-        shared_xaxes=True,
-        vertical_spacing=0.02,
-        row_heights=[0.78, 0.22],
-    )
-
-    # Candlesticks
-    fig.add_trace(go.Candlestick(
-        x=dates,
-        open=df["Open"], high=df["High"],
-        low=df["Low"],  close=df["Close"],
-        name=ticker,
-        increasing=dict(line=dict(color="#56d364", width=1), fillcolor="#56d364"),
-        decreasing=dict(line=dict(color="#f85149", width=1), fillcolor="#f85149"),
-        showlegend=False,
-        hoverinfo="none",
-    ), row=1, col=1)
-
-    # EMA overlays — no tooltip bubble
-    if ema21 is not None:
-        fig.add_trace(go.Scatter(x=dates, y=ema21, name="EMA21",
-            line=dict(color="#f8c518", width=1),
-            hoverinfo="none"), row=1, col=1)
-    if ema50 is not None:
-        fig.add_trace(go.Scatter(x=dates, y=ema50, name="EMA50",
-            line=dict(color="#58a6ff", width=1),
-            hoverinfo="none"), row=1, col=1)
-    if ema100 is not None:
-        fig.add_trace(go.Scatter(x=dates, y=ema100, name="EMA100",
-            line=dict(color="#bc8cff", width=1.5),
-            hoverinfo="none"), row=1, col=1)
-
-    # Volume histogram — no tooltip bubble
-    fig.add_trace(go.Bar(
-        x=dates, y=df["Volume"],
-        name="Volume",
-        marker_color=vol_colors,
-        showlegend=False,
-        hoverinfo="none",
-    ), row=2, col=1)
-
-    # Invisible scatter to drive crosshair spike lines (no visible tooltip)
-    fig.add_trace(go.Scatter(
-        x=dates, y=closes,
-        mode="markers",
-        marker=dict(opacity=0, size=6),
-        showlegend=False,
-        hovertemplate=" <extra></extra>",
-    ), row=1, col=1)
-
-    fig.update_layout(
-        paper_bgcolor="#0d1117",
-        plot_bgcolor="#0d1117",
-        font=dict(color="#e6edf3", size=12),
-        margin=dict(l=0, r=0, t=30, b=0),
-        height=540,
-        xaxis_rangeslider_visible=False,
-        hovermode="x",
-        hoverlabel=dict(
-            bgcolor="rgba(0,0,0,0)",
-            bordercolor="rgba(0,0,0,0)",
-            font=dict(color="rgba(0,0,0,0)", size=1),
-        ),
-        legend=dict(
-            orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
-            font=dict(size=11), bgcolor="rgba(0,0,0,0)",
-        ),
-        xaxis=dict(
-            gridcolor="#21262d", linecolor="#30363d",
-            showgrid=True, zeroline=False,
-            showspikes=True, spikecolor="#58a6ff", spikethickness=1,
-            spikedash="dot", spikemode="across", spikesnap="cursor",
-        ),
-        yaxis=dict(
-            gridcolor="#21262d", linecolor="#30363d",
-            showgrid=True, zeroline=False, side="right",
-            showspikes=True, spikecolor="#58a6ff", spikethickness=1,
-            spikedash="dot", spikemode="across",
-        ),
-        xaxis2=dict(
-            gridcolor="#21262d", linecolor="#30363d",
-            showgrid=True, zeroline=False,
-        ),
-        yaxis2=dict(
-            gridcolor="#21262d", linecolor="#30363d",
-            showgrid=True, zeroline=False, side="right",
-        ),
-    )
-    return fig
 
 
 def candlestick_chart_html(df, ticker, ema21=None, ema50=None, ema100=None, height=550):
