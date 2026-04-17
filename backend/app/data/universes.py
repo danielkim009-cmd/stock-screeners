@@ -127,7 +127,67 @@ _NASDAQ100_FALLBACK = [
 
 
 def _fetch_nasdaq100() -> list[str]:
-    """Scrape NASDAQ-100 components from Wikipedia; fall back to static list."""
+    """Fetch NASDAQ-100 components.
+    Sources tried in order:
+      1. nasdaq.com market-activity page (JSON embedded in __NEXT_DATA__)
+      2. Wikipedia Nasdaq-100 article
+      3. Static fallback list
+    """
+    import json as _json
+    import re as _re
+
+    # --- Source 1: nasdaq.com ---
+    try:
+        resp = httpx.get(
+            "https://www.nasdaq.com/market-activity/quotes/nasdaq-ndx-index",
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/124.0.0.0 Safari/537.36"
+                ),
+                "Accept-Language": "en-US,en;q=0.9",
+            },
+            timeout=15,
+            follow_redirects=True,
+        )
+        resp.raise_for_status()
+        # The page embeds Next.js data in <script id="__NEXT_DATA__"> as JSON.
+        match = _re.search(
+            r'<script[^>]+id=["\']__NEXT_DATA__["\'][^>]*>(.*?)</script>',
+            resp.text,
+            _re.DOTALL,
+        )
+        if match:
+            data = _json.loads(match.group(1))
+            # Walk into the nested structure to find the constituents list.
+            # Path varies by page build; search recursively for a list of dicts
+            # that each have a "symbol" key.
+            def _find_symbols(obj: object) -> list[str]:
+                if isinstance(obj, dict):
+                    if "symbol" in obj and isinstance(obj["symbol"], str):
+                        return [obj["symbol"].strip()]
+                    found: list[str] = []
+                    for v in obj.values():
+                        found.extend(_find_symbols(v))
+                    return found
+                if isinstance(obj, list):
+                    found = []
+                    for item in obj:
+                        found.extend(_find_symbols(item))
+                    return found
+                return []
+
+            symbols = _find_symbols(data)
+            tickers = list(dict.fromkeys(
+                t.upper() for t in symbols if t and len(t) <= 6
+            ))
+            if len(tickers) > 50:
+                return tickers
+    except Exception:
+        pass
+
+    # --- Source 2: Wikipedia ---
     try:
         resp = httpx.get(
             "https://en.wikipedia.org/wiki/Nasdaq-100",
@@ -145,7 +205,8 @@ def _fetch_nasdaq100() -> list[str]:
                     return tickers
     except Exception:
         pass
-    # Wikipedia blocked or unavailable — use static fallback list
+
+    # --- Source 3: static fallback list ---
     return list(dict.fromkeys(_NASDAQ100_FALLBACK))  # deduplicate, preserve order
 
 

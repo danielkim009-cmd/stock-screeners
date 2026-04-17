@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trend Following Trading Education — Curriculum Map</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #222636;
+      --border: #2e3349;
+      --accent: #4f8ef7;
+      --accent2: #7c5fe6;
+      --green: #34d399;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --added: #10b981;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      padding: 40px 24px 80px;
+    }
+
+    header {
+      max-width: 960px;
+      margin: 0 auto 48px;
+      text-align: center;
+    }
+    header .label {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 16px;
+    }
+    header h1 {
+      font-size: clamp(26px, 4vw, 42px);
+      font-weight: 800;
+      letter-spacing: -.02em;
+      line-height: 1.15;
+      margin-bottom: 14px;
+    }
+    header h1 span {
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header p {
+      color: var(--muted);
+      font-size: 16px;
+      max-width: 620px;
+      margin: 0 auto 24px;
+      line-height: 1.6;
+    }
+
+    .legend {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 48px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .legend-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+    }
+    .dot-core { background: var(--accent); }
+    .dot-added { background: var(--added); }
+    .dot-woven { background: var(--yellow); }
+
+    .curriculum {
+      max-width: 960px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .module {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .module:hover { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent)20; }
+
+    .module-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 24px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .module-num {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .module-info { flex: 1; }
+    .module-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .module-subtitle {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .badge {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+    .badge-added { background: #10b98120; color: var(--added); border: 1px solid #10b98140; }
+    .badge-woven { background: #fbbf2420; color: var(--yellow); border: 1px solid #fbbf2440; }
+    .badge-core  { background: #4f8ef720; color: var(--accent);  border: 1px solid #4f8ef740; }
+
+    .chevron {
+      color: var(--muted);
+      font-size: 18px;
+      transition: transform .25s;
+      flex-shrink: 0;
+    }
+    .module.open .chevron { transform: rotate(180deg); }
+
+    .module-body {
+      display: none;
+      border-top: 1px solid var(--border);
+      padding: 24px 24px 28px;
+    }
+    .module.open .module-body { display: block; }
+
+    .topics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .topic-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 13.5px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      transition: border-color .15s, background .15s;
+      cursor: default;
+    }
+    .topic-card:hover {
+      border-color: var(--accent);
+      background: #4f8ef708;
+    }
+    .topic-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .topic-name { font-weight: 600; color: var(--text); }
+    .topic-desc { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+
+    .instructor-note {
+      background: #4f8ef710;
+      border: 1px solid #4f8ef730;
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-top: 4px;
+    }
+    .instructor-note strong { color: var(--accent); }
+
+    /* Module color themes */
+    .m1 .module-num { background: #4f8ef720; color: var(--accent); }
+    .m2 .module-num { background: #7c5fe620; color: var(--accent2); }
+    .m3 .module-num { background: #34d39920; color: var(--green); }
+    .m4 .module-num { background: #f59e0b20; color: var(--yellow); }
+    .m5 .module-num { background: #f8717120; color: var(--red); }
+    .m6 .module-num { background: #06b6d420; color: #22d3ee; }
+    .m7 .module-num { background: #8b5cf620; color: #a78bfa; }
+
+    .progress-bar {
+      height: 3px;
+      border-radius: 2px;
+      margin-bottom: 4px;
+    }
+
+    /* Sequencing note callout */
+    .callout {
+      max-width: 960px;
+      margin: 24px auto 0;
+      background: #fbbf2410;
+      border: 1px solid #fbbf2430;
+      border-radius: 14px;
+      padding: 18px 22px;
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.65;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .callout-icon { font-size: 22px; flex-shrink: 0; }
+    .callout strong { color: var(--yellow); }
+
+    @media (max-width: 600px) {
+      body { padding: 24px 14px 60px; }
+      .module-header { padding: 16px 16px; }
+      .module-body { padding: 16px 16px 20px; }
+      .topics-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="label">Teaching Roadmap</div>
+  <h1>Trend Following <span>Trading Education</span><br>Curriculum Map</h1>
+  <p>A structured progression from foundations through advanced rule-based strategy — designed for college students with no prior trading experience.</p>
+</header>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot dot-core"></div> Core curriculum</div>
+  <div class="legend-item"><div class="legend-dot dot-added"></div> Recommended addition</div>
+  <div class="legend-item"><div class="legend-dot dot-woven"></div> Weave throughout</div>
+</div>
+
+<div class="curriculum">
+
+  <!-- MODULE 1 -->
+  <div class="module m1 open">
+    <div class="module-header" onclick="toggle(this)">
+      <div class="module-num">01</div>
+      <div class="module-info">
+        <div class="module-title">
+          Foundations of Markets &amp; the Trend-Following Mindset
+          <span class="badge badge-core">Core</span>
+        </div>
+        <div class="module-subtitle">6 topics · Why markets trend and how trend-followers think</div>
+      </div>
+      <div class="chevron">▾</div>
+    </div>
+    <div class="module-body">
+      <div class="topics-grid">
+        <div class="topic-card">
+          <div class="topic-icon">📈</div>
+          <div>
+            <div class="topic-name">What is a financial market?</div>
+            <div class="topic-desc">Price discovery, buyers &amp; sellers, market participants</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">🌊</div>
+          <div>
+            <div class="topic-name">Why do trends exist?</div>
+            <div class="topic-desc">Behavioral finance, momentum, institutional flow</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">🧭</div>
+          <div>
+            <div class="topic-name">Market structure &amp; macro context</div>
+            <div class="topic-desc">Bull/bear cycles, volatility regimes, rate environments — when trend-following works and why</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">🧠</div>
+          <div>
+            <div class="topic-name">Trading psychology — Part I</div>
+            <div class="topic-desc">FOMO, revenge trading, process vs. outcome quality — before real money is on the line</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">📋</div>
+          <div>
+            <div class="topic-name">Rules-based vs. discretionary trading</div>
+            <div class="topic-desc">Why systematic approaches reduce emotional decision-making</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">🗂️</div>
+          <div>
+            <div class="topic-name">Reading a price chart</div>
+            <div class="topic-desc">OHLC bars, candlesticks, volume, timeframes</div>
+          </div>
+        </div>
+      </div>
+      <div class="instructor-note">
+        <strong>Instructor note:</strong> Introduce psychology and macro context here rather than saving them for the end — they're foundational filters for everything that follows. A student who understands <em>why</em> environments matter won't confuse a bad market with a bad strategy.
+      </div>
+    </div>
+  </div>
+
+  <!-- MODULE 2 -->
+  <div class="module m2">
+    <div class="module-header" onclick="toggle(this)">
+      <div class="module-num">02</div>
+      <div class="module-info">
+        <div class="module-title">
+          Asset Classes &amp; Instruments
+          <span class="badge badge-core">Core</span>
+        </div>
+        <div class="module-subtitle">5 topics · What you can trade and how each market behaves</div>
+      </div>
+      <div class="chevron">▾</div>
+    </div>
+    <div class="module-body">
+      <div class="topics-grid">
+        <div class="topic-card">
+          <div class="topic-icon">🏢</div>
+          <div>
+            <div class="topic-name">Equities (stocks)</div>
+            <div class="topic-desc">Common shares, sectors, market cap; how equities trend</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">🔮</div>
+          <div>
+            <div class="topic-name">Futures &amp; commodities</div>
+            <div class="topic-desc">Contract specs, roll, why Turtle traders used futures</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">💱</div>
+          <div>
+            <div class="topic-name">Forex</div>
+            <div class="topic-desc">Currency pairs, 24-hour market structure, carry</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">💎</div>
+          <div>
+            <div class="topic-name">ETFs &amp; index products</div>
+            <div class="topic-desc">Diversification, leveraged ETFs, sector rotation</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">🔗</div>
+          <div>
+            <div class="topic-name">Crypto &amp; digital assets</div>
+            <div class="topic-desc">High-volatility trending markets; unique risks</div>
+          </div>
+        </div>
+      </div>
+      <div class="instructor-note">
+        <strong>Instructor note:</strong> Anchor each asset class to its trend-following characteristics — not just what it is. Ask students: <em>"Would a 20-day breakout strategy work on bonds the same way it works on commodities? Why or why not?"</em>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODULE 3 -->
+  <div class="module m3">
+    <div class="module-header" onclick="toggle(this)">
+      <div class="module-num">03</div>
+      <div class="module-info">
+        <div class="module-title">
+          Screening &amp; Opportunity Identification
+          <span class="badge badge-core">Core</span>
+        </div>
+        <div class="module-subtitle">5 topics · How to find trades before they happen</div>
+      </div>
+      <div class="chevron">▾</div>
+    </div>
+    <div class="module-body">
+      <div class="topics-grid">
+        <div class="topic-card">
+          <div class="topic-icon">🔍</div>
+          <div>
+            <div class="topic-name">Technical indicators for screening</div>
+            <div class="topic-desc">Moving averages, ATR, RSI — as filters, not signals</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">📊</div>
+          <div>
+            <div class="topic-name">Relative strength ranking</div>
+            <div class="topic-desc">Identifying leaders vs. laggards within a universe</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">🏗️</div>
+          <div>
+            <div class="topic-name">Chart pattern recognition</div>
+            <div class="topic-desc">Bases, consolidations, VCP (Volatility Contraction Pattern)</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">📰</div>
+          <div>
+            <div class="topic-name">Fundamental catalysts</div>
+            <div class="topic-desc">Earnings, revenue growth — the SEPA approach to fundamentals</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">🛠️</div>
+          <div>
+            <div class="topic-name">Building a watchlist</div>
+            <div class="topic-desc">Daily scanning routine, tools (Finviz, TradingView, TC2000)</div>
+          </div>
+        </div>
+      </div>
+      <div class="instructor-note">
+        <strong>Instructor note:</strong> Reinforce that screening is about narrowing the universe to high-probability setups — not predicting the future. Have students build and maintain a live watchlist throughout the course.
+      </div>
+    </div>
+  </div>
+
+  <!-- MODULE 4 -->
+  <div class="module m4">
+    <div class="module-header" onclick="toggle(this)">
+      <div class="module-num">04</div>
+      <div class="module-info">
+        <div class="module-title">
+          Entry, Exit, Profit-Taking &amp; Stop-Loss
+          <span class="badge badge-core">Core</span>
+        </div>
+        <div class="module-subtitle">6 topics · The mechanics of getting in and out correctly</div>
+      </div>
+      <div class="chevron">▾</div>
+    </div>
+    <div class="module-body">
+      <div class="topics-grid">
+        <div class="topic-card">
+          <div class="topic-icon">🚪</div>
+          <div>
+            <div class="topic-name">Entry triggers</div>
+            <div class="topic-desc">Breakouts, pullbacks, pivot points; confirming volume</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">🛑</div>
+          <div>
+            <div class="topic-name">Initial stop-loss placement</div>
+            <div class="topic-desc">ATR-based stops, chart-based stops, fixed-percentage stops</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">📐</div>
+          <div>
+            <div class="topic-name">Position sizing at entry</div>
+            <div class="topic-desc">Calculating shares based on stop distance and risk per trade</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">🔒</div>
+          <div>
+            <div class="topic-name">Trailing stops</div>
+            <div class="topic-desc">Locking in gains as price advances; N-based (Turtle) trailing</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">💰</div>
+          <div>
+            <div class="topic-name">Partial profit-taking</div>
+            <div class="topic-desc">Scaling out at targets vs. letting runners run the full trend</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">🚫</div>
+          <div>
+            <div class="topic-name">Full exits</div>
+            <div class="topic-desc">Closing rules: channel breakdowns, system signals, earnings risk</div>
+          </div>
+        </div>
+      </div>
+      <div class="instructor-note">
+        <strong>Instructor note:</strong> The most common student mistake is inconsistency between planned and executed stops. Role-play the decision under simulated drawdown to make it visceral before it's real.
+      </div>
+    </div>
+  </div>
+
+  <!-- MODULE 5 -->
+  <div class="module m5">
+    <div class="module-header" onclick="toggle(this)">
+      <div class="module-num">05</div>
+      <div class="module-info">
+        <div class="module-title">
+          Risk Management &amp; Portfolio Construction
+          <span class="badge badge-core">Core</span>
+        </div>
+        <div class="module-subtitle">6 topics · Surviving long enough to let the edge play out</div>
+      </div>
+      <div class="chevron">▾</div>
+    </div>
+    <div class="module-body">
+      <div class="topics-grid">
+        <div class="topic-card">
+          <div class="topic-icon">⚖️</div>
+          <div>
+            <div class="topic-name">Risk per trade (R)</div>
+            <div class="topic-desc">Defining R, sizing every trade to a fixed fraction of capital</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">📉</div>
+          <div>
+            <div class="topic-name">Drawdown &amp; recovery math</div>
+            <div class="topic-desc">Why a 50% loss requires a 100% gain to recover; expectancy</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">🎲</div>
+          <div>
+            <div class="topic-name">Correlation &amp; diversification</div>
+            <div class="topic-desc">Avoiding concentrated bets; sector &amp; asset class correlation</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">📦</div>
+          <div>
+            <div class="topic-name">Portfolio heat</div>
+            <div class="topic-desc">Total risk across all open positions; max concurrent exposure</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">🔁</div>
+          <div>
+            <div class="topic-name">Adding to winners (pyramiding)</div>
+            <div class="topic-desc">Unit-based scaling; Turtle System 2 unit methodology</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">🧯</div>
+          <div>
+            <div class="topic-name">Max loss rules &amp; circuit breakers</div>
+            <div class="topic-desc">Daily, weekly, monthly loss limits; when to stop trading</div>
+          </div>
+        </div>
+      </div>
+      <div class="instructor-note">
+        <strong>Instructor note:</strong> Make students do the drawdown math by hand. The moment they calculate that a 40% drawdown requires a 67% recovery gain is often the moment risk management clicks emotionally — not just intellectually.
+      </div>
+    </div>
+  </div>
+
+  <!-- MODULE 6 -->
+  <div class="module m6">
+    <div class="module-header" onclick="toggle(this)">
+      <div class="module-num">06</div>
+      <div class="module-info">
+        <div class="module-title">
+          Trend-Following Strategy Systems
+          <span class="badge badge-core">Core</span>
+        </div>
+        <div class="module-subtitle">3 systems · Complete rule sets for the Turtle, SEPA, and Donchian approaches</div>
+      </div>
+      <div class="chevron">▾</div>
+    </div>
+    <div class="module-body">
+      <div class="topics-grid">
+        <div class="topic-card">
+          <div class="topic-icon">🐢</div>
+          <div>
+            <div class="topic-name">Turtle System 2</div>
+            <div class="topic-desc">55-day breakout entry, 20-day exit, N-based stops &amp; sizing, unit pyramiding, correlation limits</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">🌱</div>
+          <div>
+            <div class="topic-name">SEPA (Minervini)</div>
+            <div class="topic-desc">Trend template, Stage 2 analysis, VCP pattern, fundamental + technical confluence, tight stop discipline</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">📏</div>
+          <div>
+            <div class="topic-name">Donchian Channel System</div>
+            <div class="topic-desc">N-day high/low channels for entry &amp; exit, ATR sizing, how it relates to Turtle System 1</div>
+          </div>
+        </div>
+      </div>
+      <div class="instructor-note">
+        <strong>Instructor note:</strong> Present all three systems side by side after students have internalized Modules 1–5. They'll see that the systems differ mainly in their <em>universe</em> and <em>holding period</em> — not in their underlying logic. Assign a paper-trade project where each student picks one system and follows it for 4 weeks.
+      </div>
+    </div>
+  </div>
+
+  <!-- MODULE 7 -->
+  <div class="module m7">
+    <div class="module-header" onclick="toggle(this)">
+      <div class="module-num">07</div>
+      <div class="module-info">
+        <div class="module-title">
+          Advanced Topics Most Curricula Skip
+          <span class="badge badge-added">Recommended additions</span>
+        </div>
+        <div class="module-subtitle">4 topics · The details that separate students who succeed from students who quit</div>
+      </div>
+      <div class="chevron">▾</div>
+    </div>
+    <div class="module-body">
+      <div class="topics-grid">
+        <div class="topic-card">
+          <div class="topic-icon">🔬</div>
+          <div>
+            <div class="topic-name">Backtesting &amp; system validation</div>
+            <div class="topic-desc">Running historical tests, avoiding overfitting, walk-forward testing, not deceiving yourself with cherry-picked parameters</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">🧘</div>
+          <div>
+            <div class="topic-name">Trading psychology — Part II</div>
+            <div class="topic-desc">Managing real-money loss, overconfidence after wins, following the system when it's losing, journaling practice</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">💸</div>
+          <div>
+            <div class="topic-name">Transaction costs, taxes &amp; account rules</div>
+            <div class="topic-desc">PDT rule, short-term vs. long-term capital gains, commissions &amp; slippage, margin requirements — all of which eat trend-following returns</div>
+          </div>
+        </div>
+        <div class="topic-card">
+          <div class="topic-icon">🌐</div>
+          <div>
+            <div class="topic-name">Macro environment &amp; strategy fitness</div>
+            <div class="topic-desc">Identifying when your system is likely to underperform; adapting position sizing (not rules) to regime; distinguishing bad luck from bad process</div>
+          </div>
+        </div>
+      </div>
+      <div class="instructor-note">
+        <strong>Instructor note:</strong> The PDT rule alone will shock most beginners — surface it early rather than at the end. For backtesting, the real lesson isn't mechanics: it's building the habit of asking <em>"Am I fooling myself?"</em> before committing real capital to a system.
+      </div>
+    </div>
+  </div>
+
+</div><!-- /curriculum -->
+
+<div class="callout">
+  <div class="callout-icon">💡</div>
+  <div>
+    <strong>Sequencing note:</strong> Psychology and macro context are listed in Module 1 and woven throughout, rather than saved for Module 7. Students who haven't experienced real losses need these frameworks <em>before</em> they build habits around the mechanics — not after. Consider revisiting them briefly at the start of each subsequent module.
+  </div>
+</div>
+
+<script>
+  function toggle(header) {
+    const module = header.parentElement;
+    module.classList.toggle('open');
+  }
+</script>
+
+</body>
+</html>

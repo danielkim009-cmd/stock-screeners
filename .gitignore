@@ -47,6 +47,7 @@ frontend/.vite/
 *.swp
 *.swo
 .DS_Store
+*.code-workspace
 
 # Test artifacts
 .pytest_cache/

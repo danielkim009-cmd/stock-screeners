@@ -99,20 +99,49 @@ export default function CandlestickChart({ data, markers, showVolume = false, tr
       })));
     }
 
-    // SMA50 — computed on ALL data (including warm-up bars), emitted from trimStart
+    // ── Helper: compute EMA series ─────────────────────────────────────────────
+    function computeEma(period, visibleFrom) {
+      const k = 2 / (period + 1);
+      const result = [];
+      let ema = null;
+      for (let i = 0; i < formatted.length; i++) {
+        const close = formatted[i].close;
+        ema = ema === null ? close : close * k + ema * (1 - k);
+        if (i >= visibleFrom) {
+          result.push({ time: formatted[i].time, value: ema });
+        }
+      }
+      return result;
+    }
+
+    // EMA50
     const sma50Series = chart.addLineSeries({
       color: "#e3b341",
       lineWidth: 1,
       priceLineVisible: false,
       lastValueVisible: false,
     });
-    const sma50Data = [];
-    const firstVisible = Math.max(49, trimStart);
-    for (let i = firstVisible; i < formatted.length; i++) {
-      const avg = formatted.slice(i - 49, i + 1).reduce((s, d) => s + d.close, 0) / 50;
-      sma50Data.push({ time: formatted[i].time, value: avg });
-    }
-    sma50Series.setData(sma50Data);
+    sma50Series.setData(computeEma(50, Math.max(49, trimStart)));
+
+    // EMA21
+    const ema21Series = chart.addLineSeries({
+      color: "#58a6ff",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+    const ema21Data = computeEma(21, Math.max(20, trimStart));
+    ema21Series.setData(ema21Data);
+
+    // EMA100
+    const ema100Series = chart.addLineSeries({
+      color: "#bc8cff",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+    const ema100Data = computeEma(100, Math.max(99, trimStart));
+    ema100Series.setData(ema100Data);
 
     chart.timeScale().fitContent();
 
@@ -139,6 +168,10 @@ export default function CandlestickChart({ data, markers, showVolume = false, tr
       const priceColor = isUp ? "#56d364" : "#f85149";
       const vol = volumeMap[param.time];
 
+      const ema21Val = param.seriesData.get(ema21Series);
+      const ema50Val = param.seriesData.get(sma50Series);
+      const ema100Val = param.seriesData.get(ema100Series);
+
       tooltip.innerHTML =
         `<span style="color:#8b949e;margin-right:10px">${param.time}</span>` +
         `<span style="color:#8b949e;margin-right:3px">O</span><span style="margin-right:10px">${candle.open.toFixed(2)}</span>` +
@@ -146,7 +179,10 @@ export default function CandlestickChart({ data, markers, showVolume = false, tr
         `<span style="color:#8b949e;margin-right:3px">L</span><span style="margin-right:10px">${candle.low.toFixed(2)}</span>` +
         `<span style="color:#8b949e;margin-right:3px">C</span><span style="color:${priceColor};font-weight:700;margin-right:10px">${candle.close.toFixed(2)}</span>` +
         `<span style="color:${priceColor};margin-right:10px">${chg >= 0 ? "+" : ""}${chg.toFixed(2)} (${chg >= 0 ? "+" : ""}${chgPct.toFixed(2)}%)</span>` +
-        (vol != null ? `<span style="color:#8b949e;margin-right:3px">Vol</span><span>${fmtVolLocal(vol)}</span>` : "");
+        (vol != null ? `<span style="color:#8b949e;margin-right:3px">Vol</span><span style="margin-right:10px">${fmtVolLocal(vol)}</span>` : "") +
+        (ema21Val != null ? `<span style="color:#58a6ff;margin-right:3px">EMA21</span><span style="color:#58a6ff;margin-right:10px">${ema21Val.value.toFixed(2)}</span>` : "") +
+        (ema50Val != null ? `<span style="color:#e3b341;margin-right:3px">EMA50</span><span style="color:#e3b341;margin-right:10px">${ema50Val.value.toFixed(2)}</span>` : "") +
+        (ema100Val != null ? `<span style="color:#bc8cff;margin-right:3px">EMA100</span><span style="color:#bc8cff">${ema100Val.value.toFixed(2)}</span>` : "");
 
       tooltip.style.left = "0";
       tooltip.style.top = "0";
