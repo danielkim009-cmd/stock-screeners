@@ -36,6 +36,8 @@ The most fully-featured component. Runs a walk-forward simulation on the S&P 500
 
 > Sliding window backtest reports are in [`backend/sliding_window_results_quarterly.html`](https://danielkim009-cmd.github.io/stock-screeners/backend/sliding_window_results_quarterly.html) and [`backend/sliding_window_results_nasdaq100.html`](https://danielkim009-cmd.github.io/stock-screeners/backend/sliding_window_results_nasdaq100.html).
 
+> Trading education curriculum map: [`Trading_Education_Curriculum_Map.html`](https://danielkim009-cmd.github.io/stock-screeners/Trading_Education_Curriculum_Map.html).
+
 ## Tech Stack
 
 | Layer | Tech |
@@ -140,6 +142,7 @@ stock-screeners/
 │   ├── sliding_window_results_quarterly.html
 │   ├── sliding_window_results_nasdaq100.html
 │   ├── sliding_window_results_relvol.html
+├── Trading_Education_Curriculum_Map.html
 │   └── requirements.txt
 └── frontend/
     ├── src/
