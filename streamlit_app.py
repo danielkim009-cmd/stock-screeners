@@ -555,7 +555,15 @@ if page == "Daniel's Breakout":
 
     # ── Portfolio Backtest ────────────────────────────────────────────────────
     with tab_pf:
-        pf_uni_lbl = st.selectbox("Universe", PF_UNIVERSES, key="pf_uni_lbl")
+        def _on_pf_universe_change():
+            lbl = st.session_state["pf_uni_lbl"]
+            r   = RECOMMENDATIONS[lbl]
+            st.session_state["pf_trail"]  = float(r["trail"])
+            st.session_state["pf_maxpos"] = r["pos"]
+            st.session_state["pf_rank"]   = r["rank"]
+            st.session_state["pf_rebal"]  = r["rebal"]
+
+        pf_uni_lbl = st.selectbox("Universe", PF_UNIVERSES, key="pf_uni_lbl", on_change=_on_pf_universe_change)
         pf_uni     = UNIVERSE_OPTIONS[pf_uni_lbl]
         bm_ticker  = BENCHMARK_MAP[pf_uni]
         rec        = RECOMMENDATIONS[pf_uni_lbl]

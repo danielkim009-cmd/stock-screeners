@@ -95,16 +95,16 @@ def run_daniels_portfolio_backtest(
 
     Parameters
     ----------
-    stock_dfs     : {ticker: OHLCV DataFrame} — the universe to screen
-    spy_df        : SPY OHLCV DataFrame for buy-and-hold benchmark
-    exit_mode     : "SMA50" | "ATR_TRAIL" | "PCT_TRAIL" | "BOTH"
-    trail_pct     : percentage drawdown from peak to trigger PCT_TRAIL exit
-    atr_multiplier: multiplier for ATR trailing stop
-    max_positions : maximum concurrent open positions
-    rebalance     : "NONE" | "DAILY" | "WEEKLY" | "MONTHLY"
-                    On each rebalance date, force-exit positions no longer in
-                    the top-N signals and replace them with current top signals.
-    initial_capital: starting portfolio value
+    stock_dfs  : {ticker: OHLCV DataFrame} — the universe to screen
+    spy_df     : SPY OHLCV DataFrame for buy-and-hold benchmark
+    exit_mode  : "SMA50" | "ATR_TRAIL" | "PCT_TRAIL" | "BOTH"
+    trail_pct  : percentage drawdown from peak to trigger PCT_TRAIL exit
+    atr_multiplier : multiplier for ATR trailing stop
+    max_positions  : maximum concurrent open positions
+    rebalance  : "NONE" | "DAILY" | "WEEKLY" | "MONTHLY"
+                 On each rebalance date, force-exit positions no longer in
+                 the top-N signals and replace them with current top signals.
+    initial_capital : starting portfolio value
     """
     if not stock_dfs:
         return None
@@ -188,6 +188,8 @@ def run_daniels_portfolio_backtest(
             "dates":       dates,
             "close":       close,
             "open":        open_,
+            "ema21":       ema21,
+            "ema50":       ema50,
             "sma50":       sma50,
             "atr20":       atr20,
             "rel_vol":     rel_vol,
@@ -258,8 +260,8 @@ def run_daniels_portfolio_backtest(
 
     # ── 3. Portfolio walk-forward ─────────────────────────────────────────── #
     cash      = float(initial_capital)
-    positions: dict[str, dict] = {}   # ticker → position info
-    pending:   list[tuple[str, float]] = []   # (ticker, rel_vol) entered next open
+    positions: dict[str, dict] = {}          # ticker → position info
+    pending:   list[tuple[str, float]] = []  # (ticker, score) entered next open
     trades:    list[PortfolioTrade] = []
     equity_curve: list[dict] = []
     position_counts: list[int] = []
@@ -427,7 +429,7 @@ def run_daniels_portfolio_backtest(
             slots = max_positions - len(positions)
             pending = new_entries[:slots * 2]
 
-        # ── 3c. Scan for new entry signals (enter tomorrow) ───────────────── #
+        # ── 3c. Scan for new breakout signals ────────────────────────────── #
         if len(positions) < max_positions:
             new_signals: list[tuple[str, float]] = []
             for ticker, pc in precomputed.items():
@@ -439,10 +441,8 @@ def run_daniels_portfolio_backtest(
                 if bool(pc["signal"][idx]) and idx + 1 < pc["n"]:
                     new_signals.append((ticker, rank_score(pc, idx)))
 
-            # Rank by rel_vol descending — biggest breakout volume gets priority
             new_signals.sort(key=lambda x: -x[1])
             slots = max_positions - len(positions)
-            # Keep a small buffer in case some entries can't execute
             pending = new_signals[:slots * 2]
 
         # ── 3d. Record equity snapshot ────────────────────────────────────── #

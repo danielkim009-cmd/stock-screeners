@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { runDanielsScreen, fetchChart, runDanielsPortfolioBacktest } from "../api/screener";
 import CandlestickChart from "../components/CandlestickChart";
 import EquityChart from "../components/EquityChart";
@@ -502,8 +502,8 @@ export default function DanielsBreakoutScreener() {
             <div style={{ background: "#0d1f3c", border: "1px solid #388bfd66", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#79c0ff", display: "flex", alignItems: "flex-start", gap: 10 }}>
               <span style={{ fontSize: 16, lineHeight: 1 }}>💡</span>
               <span>
-                <strong>NASDAQ 100 recommended settings:</strong> Trailing Stop 24% · Max Positions 2 · Rebalance Quarterly
-                <button onClick={() => { setPfExitMode("PCT_TRAIL"); setPfTrailPct(24); setPfMaxPos(2); setPfRebalance("QUARTERLY"); }}
+                <strong>NASDAQ 100 recommended settings:</strong> Trailing Stop 24% · Max Positions 2 · Rank by Rel Vol · Rebalance Quarterly
+                <button onClick={() => { setPfExitMode("PCT_TRAIL"); setPfTrailPct(24); setPfMaxPos(2); setPfRankBy("REL_VOL"); setPfRebalance("QUARTERLY"); }}
                   style={{ marginLeft: 12, padding: "2px 10px", borderRadius: 5, border: "1px solid #388bfd66", background: "#1f6feb", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                   Apply
                 </button>
@@ -526,7 +526,7 @@ export default function DanielsBreakoutScreener() {
           {/* Config panel */}
           <div style={{ background: "#161b22", border: "1px solid #30363d", borderRadius: 8, padding: 16, marginBottom: 20 }}>
             <div style={{ fontSize: 11, color: "#8b949e", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
-              Portfolio Backtest — up to {pfMaxPos} positions · ranked by rel vol
+              Portfolio Backtest — up to {pfMaxPos} positions · ranked by {{"REL_VOL":"Rel Vol","RS_20":"Rel Strength 20d","RS_63":"Rel Strength 63d","RS_126":"Rel Strength 126d","RS_VOL":"Rel Strength × Rel Vol"}[pfRankBy] || pfRankBy}
             </div>
             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
               <select value={pfUniverse} onChange={e => setPfUniverse(e.target.value)} style={selectStyle}>

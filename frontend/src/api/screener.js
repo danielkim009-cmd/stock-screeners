@@ -54,7 +54,7 @@ export async function runDanielsBacktest(ticker, periodDays = 730, exitMode = "S
   return res.json();
 }
 
-export async function runDanielsPortfolioBacktest(periodDays = 730, exitMode = "BOTH", trailPct = 10, maxPositions = 10, rebalance = "NONE", initialCapital = 100000, universe = "sp500", startDate = "", endDate = "", rankBy = "REL_VOL") { // rankBy: REL_VOL | RS_20 | RS_63 | RS_126 | RS_VOL
+export async function runDanielsPortfolioBacktest(periodDays = 730, exitMode = "BOTH", trailPct = 10, maxPositions = 10, rebalance = "NONE", initialCapital = 100000, universe = "sp500", startDate = "", endDate = "", rankBy = "REL_VOL") {
   const params = new URLSearchParams({
     period_days: periodDays,
     exit_mode: exitMode,
