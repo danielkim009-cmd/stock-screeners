@@ -198,3 +198,7 @@ RANK_BY        = "RS_20"       # REL_VOL | RS_20 | RS_63 | RS_126 | RS_VOL
 - **Survivorship bias:** The backtester uses the current index composition, which excludes delisted stocks. Past performance will be overstated to some degree.
 - **Data source:** All price data is fetched from Yahoo Finance via yfinance. Data quality depends on Yahoo's availability.
 - **Cache:** Universe ticker lists are cached to disk for 24 hours to avoid repeated network calls.
+
+## ⚠️ Disclaimer
+
+This project is for educational and research purposes only. Nothing in this app constitutes financial advice or a recommendation to buy or sell any security. Backtested results are based on historical data with known limitations — including survivorship bias from current index composition and data quality constraints from Yahoo Finance. The sliding window CAGR figures are in-sample results across historical periods and do not guarantee future returns. The market regime indicator is a simple technical filter and is not a predictive model. Always do your own research before making any investment decisions.
