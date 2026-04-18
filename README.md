@@ -4,7 +4,6 @@ A multi-strategy stock screening and backtesting app. Available in two flavours 
 
 **Live app:** [daniel-stock-screeners.streamlit.app](https://daniel-stock-screeners.streamlit.app/)
 
-![Dark-themed UI with strategy tabs, screener results, and equity curve charts]
 
 ## Strategies
 
