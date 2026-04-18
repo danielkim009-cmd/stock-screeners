@@ -427,9 +427,9 @@ if page == "Daniel's Breakout":
             with c2:
                 st.markdown("""
 **Breakout & Volume**
-- **C4** Price at or above new 6-month high
-- **C5** Today's volume ≥ 1.5× 30-day average (rel vol surge)
-- **C6** 10-day average volume ≥ 1,000,000 shares (liquidity)
+- **C4** Price at or above new high (adjustable lookback)
+- **C5** Today's volume ≥ N× 30-day average (adjustable)
+- **C6** 10-day average volume ≥ N shares (adjustable)
 """)
 
         col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
@@ -437,7 +437,7 @@ if page == "Daniel's Breakout":
             d_uni_lbl = st.selectbox("Universe", list(UNIVERSE_OPTIONS), key="d_uni")
             d_uni = UNIVERSE_OPTIONS[d_uni_lbl]
         with col2:
-            d_min = st.selectbox("Min Criteria", [6, 5, 4, 3, 2, 1], index=1, key="d_min")
+            d_min = st.selectbox("Min Criteria", [5, 6, 4, 3, 2, 1], index=0, key="d_min")
         with col3:
             if st.session_state.get("_d_uni_prev") != d_uni:
                 st.session_state["d_max"] = UNIVERSE_MAX.get(d_uni, 500)
@@ -446,6 +446,32 @@ if page == "Daniel's Breakout":
         with col4:
             st.write(""); st.write("")
             d_run = st.button("Run Screen", type="primary", key="d_run", use_container_width=True)
+
+        col5, col6, col7 = st.columns(3)
+        with col5:
+            d_rel_vol = st.selectbox(
+                "C5 — Min Rel Vol",
+                [1.0, 1.25, 1.5, 2.0, 3.0],
+                index=2,
+                format_func=lambda v: f"≥ {v}×",
+                key="d_rel_vol",
+            )
+        with col6:
+            d_avg_vol = st.selectbox(
+                "C6 — Min Avg Vol (10d)",
+                [100_000, 250_000, 500_000, 1_000_000, 2_000_000],
+                index=3,
+                format_func=lambda v: f"{v/1_000_000:.1f}M" if v >= 1_000_000 else f"{v//1000}K",
+                key="d_avg_vol",
+            )
+        with col7:
+            d_lookback = st.selectbox(
+                "C4 — High Lookback",
+                [63, 125, 189, 252],
+                index=1,
+                format_func=lambda v: {63: "3 months", 125: "6 months", 189: "9 months", 252: "1 year"}[v],
+                key="d_lookback",
+            )
 
         if d_run:
             with st.spinner(f"Screening {d_uni_lbl}…"):
@@ -456,7 +482,7 @@ if page == "Daniel's Breakout":
                     df = data.get(t)
                     if df is None or df.empty:
                         continue
-                    sig = screen_daniels_breakout(df, t)
+                    sig = screen_daniels_breakout(df, t, min_rel_vol=d_rel_vol, min_avg_vol=d_avg_vol, high_lookback=d_lookback)
                     if sig and sig.criteria_met >= d_min:
                         raw.append((sig, df))
                 meta = fetch_ticker_info([s.ticker for s, _ in raw])

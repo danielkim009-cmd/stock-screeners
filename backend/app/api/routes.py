@@ -420,9 +420,26 @@ def screen_daniels_strategy(
         le=3000,
         description="Limit tickers screened per run",
     ),
+    min_rel_vol: float = Query(
+        default=1.5,
+        ge=0.5,
+        le=10.0,
+        description="C5: min relative volume vs 30-day avg (default 1.5)",
+    ),
+    min_avg_vol: int = Query(
+        default=1_000_000,
+        ge=0,
+        description="C6: min 10-day average volume in shares (default 1,000,000)",
+    ),
+    high_lookback: int = Query(
+        default=125,
+        ge=20,
+        le=252,
+        description="C4: trading-bar lookback for the new-high window (63=3m, 125=6m, 252=1yr)",
+    ),
 ):
     """
-    Run Daniel's Breakout screen: EMA stack + volume surge + new 6-month high.
+    Run Daniel's Breakout screen: EMA stack + volume surge + new N-day high.
 
     Requires ~200 calendar days of price history for EMA100 and 6-month high.
     """
@@ -435,7 +452,7 @@ def screen_daniels_strategy(
         df = data.get(ticker)
         if df is None or df.empty:
             continue
-        sig = screen_daniels_breakout(df, ticker)
+        sig = screen_daniels_breakout(df, ticker, min_rel_vol=min_rel_vol, min_avg_vol=min_avg_vol, high_lookback=high_lookback)
         if sig is None:
             continue
         if sig.criteria_met >= min_criteria:

@@ -28,11 +28,14 @@ export async function runMinerviniScreen(universe = "russell2000", minCriteria =
   return res.json();
 }
 
-export async function runDanielsScreen(universe = "sp500", minCriteria = 6, maxTickers = 200) {
+export async function runDanielsScreen(universe = "sp500", minCriteria = 6, maxTickers = 200, minRelVol = 1.5, minAvgVol = 1000000, highLookback = 125) {
   const params = new URLSearchParams({
     universe,
     min_criteria: minCriteria,
     max_tickers: maxTickers,
+    min_rel_vol: minRelVol,
+    min_avg_vol: minAvgVol,
+    high_lookback: highLookback,
   });
   const res = await fetch(`${BASE}/screen/daniels?${params}`);
   if (!res.ok) throw new Error(`Screener error: ${res.status}`);

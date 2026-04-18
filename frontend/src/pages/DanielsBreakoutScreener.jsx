@@ -123,8 +123,11 @@ export default function DanielsBreakoutScreener() {
 
   // Screen state
   const [universe, setUniverse] = useState("sp500");
-  const [minCriteria, setMinCriteria] = useState(6);
+  const [minCriteria, setMinCriteria] = useState(5);
   const [maxTickers, setMaxTickers] = useState(3000);
+  const [minRelVol, setMinRelVol] = useState(1.5);
+  const [minAvgVol, setMinAvgVol] = useState(1000000);
+  const [highLookback, setHighLookback] = useState(125);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [response, setResponse] = useState(null);
@@ -161,7 +164,7 @@ export default function DanielsBreakoutScreener() {
     setViewRating("ALL");
     setViewRelVol("ALL");
     try {
-      const data = await runDanielsScreen(universe, minCriteria, maxTickers);
+      const data = await runDanielsScreen(universe, minCriteria, maxTickers, minRelVol, minAvgVol, highLookback);
       setResponse(data);
     } catch (e) {
       setError(e.message);
@@ -305,6 +308,35 @@ export default function DanielsBreakoutScreener() {
                 <option value={5}>5+ criteria</option>
                 <option value={4}>4+ criteria</option>
                 <option value={3}>3+ criteria</option>
+              </select>
+            </label>
+            <label style={{ fontSize: 13, color: "#8b949e", display: "flex", alignItems: "center", gap: 8 }}>
+              C4 — High lookback:
+              <select value={highLookback} onChange={e => setHighLookback(Number(e.target.value))} style={selectStyle}>
+                <option value={63}>3 months</option>
+                <option value={125}>6 months (default)</option>
+                <option value={189}>9 months</option>
+                <option value={252}>1 year</option>
+              </select>
+            </label>
+            <label style={{ fontSize: 13, color: "#8b949e", display: "flex", alignItems: "center", gap: 8 }}>
+              C5 — Min rel vol:
+              <select value={minRelVol} onChange={e => setMinRelVol(Number(e.target.value))} style={selectStyle}>
+                <option value={1.0}>≥ 1.0×</option>
+                <option value={1.25}>≥ 1.25×</option>
+                <option value={1.5}>≥ 1.5× (default)</option>
+                <option value={2.0}>≥ 2.0×</option>
+                <option value={3.0}>≥ 3.0×</option>
+              </select>
+            </label>
+            <label style={{ fontSize: 13, color: "#8b949e", display: "flex", alignItems: "center", gap: 8 }}>
+              C6 — Min avg vol:
+              <select value={minAvgVol} onChange={e => setMinAvgVol(Number(e.target.value))} style={selectStyle}>
+                <option value={100000}>100K</option>
+                <option value={250000}>250K</option>
+                <option value={500000}>500K</option>
+                <option value={1000000}>1M (default)</option>
+                <option value={2000000}>2M</option>
               </select>
             </label>
             <label style={{ fontSize: 13, color: "#8b949e", display: "flex", alignItems: "center", gap: 8 }}>

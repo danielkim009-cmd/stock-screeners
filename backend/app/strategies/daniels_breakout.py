@@ -44,12 +44,18 @@ class DanielsBreakoutSignal:
 def screen_daniels_breakout(
     df: pd.DataFrame,
     ticker: str,
+    min_rel_vol: float = 1.5,
+    min_avg_vol: int = 1_000_000,
+    high_lookback: int = 125,
 ) -> Optional[DanielsBreakoutSignal]:
     """
     Apply Daniel's breakout criteria to one stock's OHLCV DataFrame.
 
-    df     — OHLCV DataFrame; needs ≥ 130 rows (100 for EMA100 + vol buffer)
-    ticker — symbol string
+    df             — OHLCV DataFrame; needs ≥ 130 rows (100 for EMA100 + vol buffer)
+    ticker         — symbol string
+    min_rel_vol    — C5 threshold: min relative volume vs 30-day avg (default 1.5)
+    min_avg_vol    — C6 threshold: min 10-day average volume in shares (default 1,000,000)
+    high_lookback  — C4 lookback: trading bars for the new-high window (default 125 ≈ 6 months)
 
     Returns DanielsBreakoutSignal or None if data is insufficient.
     """
@@ -68,8 +74,8 @@ def screen_daniels_breakout(
     last_ema50  = float(ema50.iloc[-1])
     last_ema100 = float(ema100.iloc[-1])
 
-    # 6-month high: highest close in the 125 bars BEFORE today
-    lookback     = min(126, len(df) - 1)
+    # New high: highest close in the `high_lookback` bars BEFORE today
+    lookback     = min(high_lookback + 1, len(df) - 1)
     high_6m      = float(close.iloc[-lookback - 1 : -1].max())
 
     # Volume: exclude today so we compare today vs the prior period
@@ -82,8 +88,8 @@ def screen_daniels_breakout(
     c2 = last_ema21 >= last_ema50
     c3 = last_ema50 >= last_ema100
     c4 = last_close >= high_6m
-    c5 = rel_volume >= 1.5
-    c6 = avg_vol_10d >= 1_000_000
+    c5 = rel_volume >= min_rel_vol
+    c6 = avg_vol_10d >= min_avg_vol
 
     criteria_list = [c1, c2, c3, c4, c5, c6]
     criteria_met  = sum(criteria_list)
