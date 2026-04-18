@@ -29,7 +29,7 @@ The most fully-featured component. Runs a walk-forward simulation on the S&P 500
 
 | Universe | Trailing Stop | Max Positions | Ranking | Rebalance | Avg CAGR (10yr) |
 |---|---|---|---|---|---|
-| S&P 500 | 25% | 9 | RS_20 | Quarterly | +16.6% vs SPY +11.8% |
+| S&P 500 | 25% | 3 | RS_20 | Quarterly | +22.3% vs SPY +11.8% |
 | NASDAQ 100 | 24% | 2 | Rel Vol | Quarterly | +26.6% vs QQQ +17.3% |
 | Russell 2000 | 30% | 10 | — | Quarterly | — |
 

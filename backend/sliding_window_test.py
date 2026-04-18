@@ -1,6 +1,6 @@
 """
 Sliding 10-year window backtest for Daniel's breakout strategy on S&P 500.
-Config: PCT_TRAIL 25%, max 5 positions, RS_20 ranking, Quarterly rebalance.
+Config: PCT_TRAIL 25%, max 3 positions, RS_20 ranking, Quarterly rebalance.
 Windows: 3/1/2006→3/1/2016, 3/1/2007→3/1/2017, ..., 3/1/2016→3/1/2026
 Data is fetched once for the full period and sliced per window.
 """
@@ -16,7 +16,7 @@ from app.strategies.daniels_portfolio_backtest import run_daniels_portfolio_back
 # ── Config ────────────────────────────────────────────────────────────────────
 EXIT_MODE      = "PCT_TRAIL"
 TRAIL_PCT      = 25.0
-MAX_POSITIONS  = 5
+MAX_POSITIONS  = 3
 REBALANCE      = "QUARTERLY"
 RANK_BY        = "RS_20"
 INITIAL_CAP    = 100_000.0
@@ -97,7 +97,7 @@ for start_year in START_YEARS:
 
 # ── Print summary table ───────────────────────────────────────────────────────
 print("\n" + "="*120)
-print("SLIDING 10-YEAR WINDOW RESULTS — S&P 500 | PCT_TRAIL 25% | 5 positions | RS_20 | Quarterly rebalance")
+print("SLIDING 10-YEAR WINDOW RESULTS — S&P 500 | PCT_TRAIL 25% | 3 positions | RS_20 | Quarterly rebalance")
 print("="*120)
 df = pd.DataFrame(rows).set_index("Window")
 with pd.option_context("display.max_columns", None, "display.width", 200):
