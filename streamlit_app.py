@@ -450,7 +450,7 @@ if page == "Daniel's Breakout":
         if d_run:
             with st.spinner(f"Screening {d_uni_lbl}…"):
                 tickers = fetch_tickers(d_uni)[:d_max]
-                data    = fetch_bulk_ohlcv(tickers, period_days=200)
+                data    = fetch_bulk_ohlcv(tickers, period_days=505)  # 365 display + 140 EMA100 warmup
                 raw = []
                 for t in tickers:
                     df = data.get(t)
@@ -511,12 +511,18 @@ if page == "Daniel's Breakout":
                 if sel:
                     df_c = st.session_state["d_data"].get(sel)
                     if df_c is not None and not df_c.empty:
-                        close = df_c["Close"]
+                        close  = df_c["Close"]
+                        # Compute EMAs on full history for accuracy, then trim to 1 year for display
                         ema21  = close.ewm(span=21,  adjust=False).mean()
                         ema50  = close.ewm(span=50,  adjust=False).mean()
                         ema100 = close.ewm(span=100, adjust=False).mean()
+                        cutoff = df_c.index[-1] - pd.Timedelta(days=365)
+                        df_show     = df_c[df_c.index >= cutoff]
+                        ema21_show  = ema21[ema21.index >= cutoff]
+                        ema50_show  = ema50[ema50.index >= cutoff]
+                        ema100_show = ema100[ema100.index >= cutoff]
                         components.html(
-                            candlestick_chart_html(df_c, sel, ema21, ema50, ema100),
+                            candlestick_chart_html(df_show, sel, ema21_show, ema50_show, ema100_show),
                             height=550,
                             scrolling=False,
                         )
@@ -750,7 +756,7 @@ elif page == "Turtle Trading":
             t_uni_lbl = st.selectbox("Universe", list(UNIVERSE_OPTIONS), key="t_uni")
             t_uni = UNIVERSE_OPTIONS[t_uni_lbl]
         with col2:
-            t_sig = st.selectbox("Signal", ["ALL", "S1_BUY", "S2_BUY"], key="t_sig")
+            t_sig = st.selectbox("Signal", ["S2_BUY", "S1_BUY", "ALL"], key="t_sig")
         with col3:
             if st.session_state.get("_t_uni_prev") != t_uni:
                 st.session_state["t_max"] = UNIVERSE_MAX.get(t_uni, 500)
@@ -763,7 +769,7 @@ elif page == "Turtle Trading":
         if t_run:
             with st.spinner(f"Screening {t_uni_lbl}…"):
                 tickers = fetch_tickers(t_uni)[:t_max]
-                data    = fetch_bulk_ohlcv(tickers, period_days=400)
+                data    = fetch_bulk_ohlcv(tickers, period_days=505)  # 365 display + 140 EMA100 warmup
                 returns = {
                     tk: r for tk in tickers
                     if (df := data.get(tk)) is not None and not df.empty
@@ -800,12 +806,35 @@ elif page == "Turtle Trading":
                 order = {"S2_BUY": 0, "S1_BUY": 1, "NONE": 2}
                 rows.sort(key=lambda r: (order.get(r["Signal"], 3), -r["ATR20"]))
                 st.session_state["t_rows"] = rows
+                st.session_state["t_data"] = data
 
         if "t_rows" in st.session_state:
             rows    = st.session_state["t_rows"]
             signals = sum(1 for r in rows if r["Signal"] != "NONE")
             st.caption(f"**{signals}** signals · **{len(rows)}** total")
             st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True, height=500)
+
+            if rows:
+                st.subheader("Candlestick Chart")
+                tickers_list = sorted(r["Ticker"] for r in rows)
+                sel = st.selectbox("Select ticker to chart", tickers_list, key="t_sel")
+                if sel:
+                    df_c = st.session_state["t_data"].get(sel)
+                    if df_c is not None and not df_c.empty:
+                        close  = df_c["Close"]
+                        ema21  = close.ewm(span=21,  adjust=False).mean()
+                        ema50  = close.ewm(span=50,  adjust=False).mean()
+                        ema100 = close.ewm(span=100, adjust=False).mean()
+                        cutoff = df_c.index[-1] - pd.Timedelta(days=365)
+                        df_show     = df_c[df_c.index >= cutoff]
+                        ema21_show  = ema21[ema21.index >= cutoff]
+                        ema50_show  = ema50[ema50.index >= cutoff]
+                        ema100_show = ema100[ema100.index >= cutoff]
+                        components.html(
+                            candlestick_chart_html(df_show, sel, ema21_show, ema50_show, ema100_show),
+                            height=550,
+                            scrolling=False,
+                        )
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -855,7 +884,7 @@ elif page == "Minervini SEPA":
         if mv_run:
             with st.spinner(f"Screening {mv_uni_lbl}…"):
                 tickers = fetch_tickers(mv_uni)[:mv_max]
-                data    = fetch_bulk_ohlcv(tickers, period_days=400)
+                data    = fetch_bulk_ohlcv(tickers, period_days=505)  # 365 display + 140 EMA100 warmup
                 returns = {
                     tk: r for tk in tickers
                     if (df := data.get(tk)) is not None and not df.empty
@@ -908,11 +937,34 @@ elif page == "Minervini SEPA":
                     })
                 rows.sort(key=lambda r: (-int(r["Passes"] == "✓"), -r["Criteria"], -r["RS Rating"]))
                 st.session_state["mv_rows"] = rows
+                st.session_state["mv_data"] = data
 
         if "mv_rows" in st.session_state:
             rows   = st.session_state["mv_rows"]
             passes = sum(1 for r in rows if r["Passes"] == "✓")
             st.caption(f"**{passes}** full passes · **{len(rows)}** total")
             st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True, height=500)
+
+            if rows:
+                st.subheader("Candlestick Chart")
+                tickers_list = sorted(r["Ticker"] for r in rows)
+                sel = st.selectbox("Select ticker to chart", tickers_list, key="mv_sel")
+                if sel:
+                    df_c = st.session_state["mv_data"].get(sel)
+                    if df_c is not None and not df_c.empty:
+                        close  = df_c["Close"]
+                        ema21  = close.ewm(span=21,  adjust=False).mean()
+                        ema50  = close.ewm(span=50,  adjust=False).mean()
+                        ema100 = close.ewm(span=100, adjust=False).mean()
+                        cutoff = df_c.index[-1] - pd.Timedelta(days=365)
+                        df_show     = df_c[df_c.index >= cutoff]
+                        ema21_show  = ema21[ema21.index >= cutoff]
+                        ema50_show  = ema50[ema50.index >= cutoff]
+                        ema100_show = ema100[ema100.index >= cutoff]
+                        components.html(
+                            candlestick_chart_html(df_show, sel, ema21_show, ema50_show, ema100_show),
+                            height=550,
+                            scrolling=False,
+                        )
 
 

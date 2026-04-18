@@ -174,7 +174,7 @@ export default function DanielsBreakoutScreener() {
     setSelectedTicker(ticker);
     setChartLoading(true);
     try {
-      const data = await fetchChart(ticker, 435);   // 365 + 70 cal days SMA warm-up ≈ 1 year visible
+      const data = await fetchChart(ticker, 505);   // ~350 trading days; trimStart=100 leaves ~250 bars (1 year) visible
       setChartData(data);
     } catch {
       setChartData(null);
@@ -394,7 +394,7 @@ export default function DanielsBreakoutScreener() {
                 <h3 style={{ margin: 0 }}>{selectedTicker}</h3>
                 <button onClick={() => setSelectedTicker(null)} style={{ background: "none", border: "none", color: "#8b949e", cursor: "pointer", fontSize: 18 }}>×</button>
               </div>
-              {chartLoading ? <p style={{ color: "#8b949e" }}>Loading chart…</p> : <CandlestickChart data={chartData} showVolume trimStart={50} />}
+              {chartLoading ? <p style={{ color: "#8b949e" }}>Loading chart…</p> : <CandlestickChart data={chartData} showVolume trimStart={100} />}
             </div>
           )}
 

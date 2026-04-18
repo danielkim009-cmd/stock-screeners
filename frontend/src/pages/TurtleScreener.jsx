@@ -188,7 +188,7 @@ export default function TurtleScreener() {
     setSelectedTicker(ticker);
     setChartLoading(true);
     try {
-      const data = await fetchChart(ticker, 435);   // 365 display + 70 warmup ≈ 1 year shown
+      const data = await fetchChart(ticker, 505);   // ~350 trading days; trimStart=100 leaves ~250 bars (1 year) visible
       setChartData(data);
     } catch {
       setChartData(null);
@@ -489,7 +489,7 @@ export default function TurtleScreener() {
                 <h3 style={{ margin: 0 }}>{selectedTicker}</h3>
                 <button onClick={() => setSelectedTicker(null)} style={{ background: "none", border: "none", color: "#8b949e", cursor: "pointer", fontSize: 18 }}>×</button>
               </div>
-              {chartLoading ? <p style={{ color: "#8b949e" }}>Loading chart…</p> : <CandlestickChart data={chartData} showVolume trimStart={50} />}
+              {chartLoading ? <p style={{ color: "#8b949e" }}>Loading chart…</p> : <CandlestickChart data={chartData} showVolume trimStart={100} />}
             </div>
           )}
 
