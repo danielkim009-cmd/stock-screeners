@@ -381,7 +381,7 @@ BENCHMARK_MAP = {
 }
 
 RECOMMENDATIONS = {
-    "S&P 500":      dict(trail=25.0, pos=9,  rank="RS_20",   rebal="QUARTERLY"),
+    "S&P 500":      dict(trail=25.0, pos=5,  rank="RS_20",   rebal="QUARTERLY"),
     "NASDAQ 100":   dict(trail=24.0, pos=2,  rank="REL_VOL", rebal="QUARTERLY"),
     "Russell 2000": dict(trail=30.0, pos=10, rank="REL_VOL", rebal="QUARTERLY"),
 }
