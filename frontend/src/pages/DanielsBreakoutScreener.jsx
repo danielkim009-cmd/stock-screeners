@@ -155,11 +155,18 @@ export default function DanielsBreakoutScreener() {
       setPfRankBy("RS_20");
       setPfExitMode("PCT_TRAIL");
       setPfTrailPct(25);
+      setPfMaxPos(3);
+      setPfRebalance("QUARTERLY");
     } else if (pfUniverse === "nasdaq100") {
       setPfRankBy("REL_VOL");
       setPfExitMode("PCT_TRAIL");
       setPfTrailPct(24);
       setPfMaxPos(2);
+      setPfRebalance("QUARTERLY");
+    } else if (pfUniverse === "russell2000") {
+      setPfExitMode("PCT_TRAIL");
+      setPfTrailPct(30);
+      setPfMaxPos(10);
       setPfRebalance("QUARTERLY");
     }
   }, [pfUniverse]);
