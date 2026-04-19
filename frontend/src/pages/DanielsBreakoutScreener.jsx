@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { runDanielsScreen, fetchChart, runDanielsPortfolioBacktest } from "../api/screener";
 import CandlestickChart from "../components/CandlestickChart";
 import EquityChart from "../components/EquityChart";
@@ -139,10 +139,10 @@ export default function DanielsBreakoutScreener() {
   const [viewRelVol, setViewRelVol] = useState("ALL");
 
   // Portfolio backtest state
-  const [pfPeriod, setPfPeriod] = useState(730);
+  const [pfPeriod, setPfPeriod] = useState(3650);
   const [pfStartDate, setPfStartDate] = useState("");
   const [pfEndDate, setPfEndDate] = useState("");
-  const [pfRankBy, setPfRankBy] = useState("REL_VOL");
+  const [pfRankBy, setPfRankBy] = useState("RS_20");
   const [pfTradeFilter, setPfTradeFilter] = useState({ ticker: "", exitReason: "ALL", result: "ALL" });
   const [pfExitMode, setPfExitMode] = useState("BOTH");
   const [pfTrailPct, setPfTrailPct] = useState(10);
@@ -150,6 +150,19 @@ export default function DanielsBreakoutScreener() {
   const [pfRebalance, setPfRebalance] = useState("NONE");
   const [pfCapital, setPfCapital] = useState(100000);
   const [pfUniverse, setPfUniverse] = useState("sp500");
+  useEffect(() => {
+    if (pfUniverse === "sp500") {
+      setPfRankBy("RS_20");
+      setPfExitMode("PCT_TRAIL");
+      setPfTrailPct(25);
+    } else if (pfUniverse === "nasdaq100") {
+      setPfRankBy("REL_VOL");
+      setPfExitMode("PCT_TRAIL");
+      setPfTrailPct(24);
+      setPfMaxPos(2);
+      setPfRebalance("QUARTERLY");
+    }
+  }, [pfUniverse]);
   const [pfLoading, setPfLoading] = useState(false);
   const [pfData, setPfData] = useState(null);
   const [pfError, setPfError] = useState(null);
