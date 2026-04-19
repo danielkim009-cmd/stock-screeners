@@ -164,8 +164,9 @@ export default function DanielsBreakoutScreener() {
       setPfMaxPos(2);
       setPfRebalance("QUARTERLY");
     } else if (pfUniverse === "russell2000") {
+      setPfRankBy("REL_VOL");
       setPfExitMode("PCT_TRAIL");
-      setPfTrailPct(30);
+      setPfTrailPct(25);
       setPfMaxPos(10);
       setPfRebalance("QUARTERLY");
     }
@@ -534,8 +535,8 @@ export default function DanielsBreakoutScreener() {
             <div style={{ background: "#2d1f0d", border: "1px solid #f0883e66", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#f0883e", display: "flex", alignItems: "flex-start", gap: 10 }}>
               <span style={{ fontSize: 16, lineHeight: 1 }}>💡</span>
               <span>
-                <strong>Russell 2000 recommended settings:</strong> Trailing Stop 30% · Max Positions 10 · Rebalance Quarterly
-                <button onClick={() => { setPfExitMode("PCT_TRAIL"); setPfTrailPct(30); setPfMaxPos(10); setPfRebalance("QUARTERLY"); }}
+                <strong>Russell 2000 recommended settings:</strong> Trailing Stop 25% · Max Positions 10 · Rank by Rel Vol · Rebalance Quarterly
+                <button onClick={() => { setPfExitMode("PCT_TRAIL"); setPfTrailPct(25); setPfMaxPos(10); setPfRankBy("REL_VOL"); setPfRebalance("QUARTERLY"); }}
                   style={{ marginLeft: 12, padding: "2px 10px", borderRadius: 5, border: "1px solid #f0883e66", background: "#b94c00", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                   Apply
                 </button>
