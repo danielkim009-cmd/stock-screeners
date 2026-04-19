@@ -33,7 +33,9 @@ The most fully-featured component. Runs a walk-forward simulation on the S&P 500
 | NASDAQ 100 | 24% | 2 | Rel Vol | Quarterly | +26.6% vs QQQ +17.3% |
 | Russell 2000 | 30% | 10 | — | Quarterly | — |
 
-> Sliding window backtest reports are in [`backend/sliding_window_results_quarterly.html`](https://danielkim009-cmd.github.io/stock-screeners/backend/sliding_window_results_quarterly.html) and [`backend/sliding_window_results_nasdaq100.html`](https://danielkim009-cmd.github.io/stock-screeners/backend/sliding_window_results_nasdaq100.html).
+> 10-year sliding window backtest of Nasdaq 100 with maximum of 2 stocks at a time: [`backend/sliding_window_results_nasdaq100.html`](https://danielkim009-cmd.github.io/stock-screeners/backend/sliding_window_results_nasdaq100.html).
+>
+> 10-year sliding window testing of S&P 500 with maximum of 3 stocks at a time: [`backend/sliding_window_results_3pos.html`](https://danielkim009-cmd.github.io/stock-screeners/backend/sliding_window_results_3pos.html).
 
 > Trading education curriculum map: [`Trading_Education_Curriculum_Map.html`](https://danielkim009-cmd.github.io/stock-screeners/Trading_Education_Curriculum_Map.html).
 
