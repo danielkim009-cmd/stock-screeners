@@ -143,7 +143,7 @@ export default function DanielsBreakoutScreener() {
   const [pfStartDate, setPfStartDate] = useState("");
   const [pfEndDate, setPfEndDate] = useState("");
   const [pfRankBy, setPfRankBy] = useState("RS_20");
-  const [pfTradeFilter, setPfTradeFilter] = useState({ ticker: "", exitReason: "ALL", result: "ALL" });
+  const [pfTradeFilter, setPfTradeFilter] = useState({ ticker: "", exitReason: "ALL", result: "ALL", entryFrom: "", entryTo: "", exitFrom: "", exitTo: "" });
   const [pfExitMode, setPfExitMode] = useState("BOTH");
   const [pfTrailPct, setPfTrailPct] = useState(10);
   const [pfMaxPos, setPfMaxPos] = useState(10);
@@ -858,6 +858,10 @@ export default function DanielsBreakoutScreener() {
                   if (pfTradeFilter.exitReason !== "ALL" && t.exit_reason !== pfTradeFilter.exitReason) return false;
                   if (pfTradeFilter.result === "WIN"  && t.pnl_pct <= 0) return false;
                   if (pfTradeFilter.result === "LOSS" && t.pnl_pct >= 0) return false;
+                  if (pfTradeFilter.entryFrom && t.entry_date < pfTradeFilter.entryFrom) return false;
+                  if (pfTradeFilter.entryTo   && t.entry_date > pfTradeFilter.entryTo)   return false;
+                  if (pfTradeFilter.exitFrom  && t.exit_date  < pfTradeFilter.exitFrom)  return false;
+                  if (pfTradeFilter.exitTo    && t.exit_date  > pfTradeFilter.exitTo)    return false;
                   return true;
                 });
                 return (
@@ -882,8 +886,16 @@ export default function DanielsBreakoutScreener() {
                       <option value="WIN">Winners only</option>
                       <option value="LOSS">Losers only</option>
                     </select>
-                    {(pfTradeFilter.ticker || pfTradeFilter.exitReason !== "ALL" || pfTradeFilter.result !== "ALL") && (
-                      <button onClick={() => setPfTradeFilter({ ticker: "", exitReason: "ALL", result: "ALL" })}
+                    <span style={{ fontSize: 11, color: "#8b949e" }}>Entry:</span>
+                    <input type="date" value={pfTradeFilter.entryFrom} onChange={e => setPfTradeFilter(f => ({ ...f, entryFrom: e.target.value }))} style={{ ...selectStyle, fontSize: 12, padding: "3px 8px" }} />
+                    <span style={{ fontSize: 11, color: "#8b949e" }}>–</span>
+                    <input type="date" value={pfTradeFilter.entryTo} onChange={e => setPfTradeFilter(f => ({ ...f, entryTo: e.target.value }))} style={{ ...selectStyle, fontSize: 12, padding: "3px 8px" }} />
+                    <span style={{ fontSize: 11, color: "#8b949e" }}>Exit:</span>
+                    <input type="date" value={pfTradeFilter.exitFrom} onChange={e => setPfTradeFilter(f => ({ ...f, exitFrom: e.target.value }))} style={{ ...selectStyle, fontSize: 12, padding: "3px 8px" }} />
+                    <span style={{ fontSize: 11, color: "#8b949e" }}>–</span>
+                    <input type="date" value={pfTradeFilter.exitTo} onChange={e => setPfTradeFilter(f => ({ ...f, exitTo: e.target.value }))} style={{ ...selectStyle, fontSize: 12, padding: "3px 8px" }} />
+                    {(pfTradeFilter.ticker || pfTradeFilter.exitReason !== "ALL" || pfTradeFilter.result !== "ALL" || pfTradeFilter.entryFrom || pfTradeFilter.entryTo || pfTradeFilter.exitFrom || pfTradeFilter.exitTo) && (
+                      <button onClick={() => setPfTradeFilter({ ticker: "", exitReason: "ALL", result: "ALL", entryFrom: "", entryTo: "", exitFrom: "", exitTo: "" })}
                         style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, border: "1px solid #30363d", background: "transparent", color: "#8b949e", cursor: "pointer" }}>
                         Clear
                       </button>
