@@ -381,9 +381,9 @@ BENCHMARK_MAP = {
 }
 
 RECOMMENDATIONS = {
-    "S&P 500":      dict(trail=25.0, pos=3,  rank="RS_20",   rebal="QUARTERLY"),
-    "NASDAQ 100":   dict(trail=24.0, pos=2,  rank="REL_VOL", rebal="QUARTERLY"),
-    "Russell 2000": dict(trail=30.0, pos=10, rank="REL_VOL", rebal="QUARTERLY"),
+    "S&P 500":      dict(exit="PCT_TRAIL", trail=25.0, pos=3,  rank="RS_20",   rebal="QUARTERLY"),
+    "NASDAQ 100":   dict(exit="PCT_TRAIL", trail=24.0, pos=2,  rank="REL_VOL", rebal="QUARTERLY"),
+    "Russell 2000": dict(exit="PCT_TRAIL", trail=25.0, pos=10, rank="REL_VOL", rebal="QUARTERLY"),
 }
 
 PERIOD_OPTIONS  = {1: 365, 2: 730, 3: 1095, 5: 1825, 10: 3650, 20: 7300}
@@ -439,10 +439,10 @@ if page == "Daniel's Breakout":
         with col2:
             d_min = st.selectbox("Min Criteria", [5, 6, 4, 3, 2, 1], index=0, key="d_min")
         with col3:
-            if st.session_state.get("_d_uni_prev") != d_uni:
+            if "d_max" not in st.session_state or st.session_state.get("_d_uni_prev") != d_uni:
                 st.session_state["d_max"] = UNIVERSE_MAX.get(d_uni, 500)
                 st.session_state["_d_uni_prev"] = d_uni
-            d_max = st.number_input("Max Tickers", 50, 3000, UNIVERSE_MAX.get(d_uni, 500), 50, key="d_max")
+            d_max = st.number_input("Max Tickers", 50, 3000, step=50, key="d_max")
         with col4:
             st.write(""); st.write("")
             d_run = st.button("Run Screen", type="primary", key="d_run", use_container_width=True)
@@ -558,6 +558,7 @@ if page == "Daniel's Breakout":
         def _on_pf_universe_change():
             lbl = st.session_state["pf_uni_lbl"]
             r   = RECOMMENDATIONS[lbl]
+            st.session_state["pf_exit"]   = r["exit"]
             st.session_state["pf_trail"]  = float(r["trail"])
             st.session_state["pf_maxpos"] = r["pos"]
             st.session_state["pf_rank"]   = r["rank"]
@@ -571,6 +572,7 @@ if page == "Daniel's Breakout":
         rec_color = {"S&P 500": "green", "NASDAQ 100": "blue", "Russell 2000": "orange"}[pf_uni_lbl]
         st.info(
             f"**💡 Recommended for {pf_uni_lbl}:** "
+            f"Exit {rec['exit']} · "
             f"Trailing Stop {rec['trail']:.0f}% · "
             f"Max Positions {rec['pos']} · "
             f"Rank by {rec['rank']} · "
@@ -579,7 +581,9 @@ if page == "Daniel's Breakout":
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            pf_exit    = st.selectbox("Exit Mode",     ["PCT_TRAIL", "SMA50", "ATR_TRAIL", "BOTH"], key="pf_exit")
+            pf_exit    = st.selectbox("Exit Mode",     ["PCT_TRAIL", "SMA50", "ATR_TRAIL", "BOTH"],
+                                       index=["PCT_TRAIL","SMA50","ATR_TRAIL","BOTH"].index(rec["exit"]),
+                                       key="pf_exit")
             pf_trail   = st.number_input("Trail %",    1.0, 50.0, float(rec["trail"]), 0.5, key="pf_trail")
         with col2:
             pf_maxpos  = st.number_input("Max Positions", 1, 50, rec["pos"], 1, key="pf_maxpos")
