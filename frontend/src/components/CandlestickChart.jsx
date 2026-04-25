@@ -12,7 +12,7 @@ function fmtVolLocal(v) {
 // markers:   optional array of { date, type: 'entry'|'exit', pnl }
 // showVolume: render volume histogram in lower pane
 // trimStart:  leading bars used only for SMA warm-up; candles/volume start after them
-export default function CandlestickChart({ data, markers, showVolume = false, trimStart = 0 }) {
+export default function CandlestickChart({ data, markers, showVolume = false, trimStart = 0, ticker = "" }) {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const tooltipRef = useRef(null);
@@ -173,6 +173,7 @@ export default function CandlestickChart({ data, markers, showVolume = false, tr
       const ema100Val = param.seriesData.get(ema100Series);
 
       tooltip.innerHTML =
+        (ticker ? `<span style="font-weight:700;color:#e6edf3;margin-right:10px">${ticker}</span>` : "") +
         `<span style="color:#8b949e;margin-right:10px">${param.time}</span>` +
         `<span style="color:#8b949e;margin-right:3px">O</span><span style="margin-right:10px">${candle.open.toFixed(2)}</span>` +
         `<span style="color:#8b949e;margin-right:3px">H</span><span style="margin-right:10px">${candle.high.toFixed(2)}</span>` +

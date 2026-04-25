@@ -447,7 +447,7 @@ export default function DanielsBreakoutScreener() {
                 <h3 style={{ margin: 0 }}>{selectedTicker}</h3>
                 <button onClick={() => setSelectedTicker(null)} style={{ background: "none", border: "none", color: "#8b949e", cursor: "pointer", fontSize: 18 }}>×</button>
               </div>
-              {chartLoading ? <p style={{ color: "#8b949e" }}>Loading chart…</p> : <CandlestickChart data={chartData} showVolume trimStart={100} />}
+              {chartLoading ? <p style={{ color: "#8b949e" }}>Loading chart…</p> : <CandlestickChart data={chartData} showVolume trimStart={100} ticker={selectedTicker} />}
             </div>
           )}
 

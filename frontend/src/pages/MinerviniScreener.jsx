@@ -324,7 +324,7 @@ export default function MinerviniScreener() {
                   <span style={{ color: "#56d364" }}>S</span> exit (win) &nbsp;
                   <span style={{ color: "#f85149" }}>S</span> exit (loss)
                 </div>
-                <CandlestickChart data={btChartData} markers={markers} showVolume trimStart={50} />
+                <CandlestickChart data={btChartData} markers={markers} showVolume trimStart={50} ticker={btTicker} />
               </div>
             );
           })()}
@@ -519,7 +519,7 @@ export default function MinerviniScreener() {
                 <h3 style={{ margin: 0 }}>{selectedTicker}</h3>
                 <button onClick={() => setSelectedTicker(null)} style={{ background: "none", border: "none", color: "#8b949e", cursor: "pointer", fontSize: 18 }}>×</button>
               </div>
-              {chartLoading ? <p style={{ color: "#8b949e" }}>Loading chart…</p> : <CandlestickChart data={chartData} showVolume trimStart={100} />}
+              {chartLoading ? <p style={{ color: "#8b949e" }}>Loading chart…</p> : <CandlestickChart data={chartData} showVolume trimStart={100} ticker={selectedTicker} />}
             </div>
           )}
 

@@ -256,6 +256,7 @@ html, body {{ background:#0d1117; overflow:hidden; font-family:'Courier New',mon
 #chart {{ width:100%; height:{chart_h}px; }}
 </style></head><body>
 <div id="info">
+  <span style="font-weight:700;font-size:13px;color:#e6edf3;margin-right:4px">{ticker}</span>
   <span><span class="lbl">O</span><span id="io">{last['Open']:.2f}</span></span>
   <span><span class="lbl">H</span><span id="ih" style="color:#56d364">{last['High']:.2f}</span></span>
   <span><span class="lbl">L</span><span id="il" style="color:#f85149">{last['Low']:.2f}</span></span>
