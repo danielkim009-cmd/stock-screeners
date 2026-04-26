@@ -148,7 +148,7 @@ export default function DanielsBreakoutScreener() {
   const [pfTrailPct, setPfTrailPct] = useState(10);
   const [pfMaxPos, setPfMaxPos] = useState(10);
   const [pfRebalance, setPfRebalance] = useState("NONE");
-  const [pfCapital, setPfCapital] = useState(100000);
+  const [pfCapital, setPfCapital] = useState(10000);
   const [pfUniverse, setPfUniverse] = useState("sp500");
   useEffect(() => {
     if (pfUniverse === "sp500") {
@@ -160,7 +160,7 @@ export default function DanielsBreakoutScreener() {
     } else if (pfUniverse === "nasdaq100") {
       setPfRankBy("REL_VOL");
       setPfExitMode("PCT_TRAIL");
-      setPfTrailPct(24);
+      setPfTrailPct(22);
       setPfMaxPos(2);
       setPfRebalance("QUARTERLY");
     } else if (pfUniverse === "russell2000") {
@@ -523,8 +523,8 @@ export default function DanielsBreakoutScreener() {
             <div style={{ background: "#0d1f3c", border: "1px solid #388bfd66", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#79c0ff", display: "flex", alignItems: "flex-start", gap: 10 }}>
               <span style={{ fontSize: 16, lineHeight: 1 }}>💡</span>
               <span>
-                <strong>NASDAQ 100 recommended settings:</strong> Trailing Stop 24% · Max Positions 2 · Rank by Rel Vol · Rebalance Quarterly
-                <button onClick={() => { setPfExitMode("PCT_TRAIL"); setPfTrailPct(24); setPfMaxPos(2); setPfRankBy("REL_VOL"); setPfRebalance("QUARTERLY"); }}
+                <strong>NASDAQ 100 recommended settings:</strong> Trailing Stop 22% · Max Positions 2 · Rank by Rel Vol · Rebalance Quarterly
+                <button onClick={() => { setPfExitMode("PCT_TRAIL"); setPfTrailPct(22); setPfMaxPos(2); setPfRankBy("REL_VOL"); setPfRebalance("QUARTERLY"); }}
                   style={{ marginLeft: 12, padding: "2px 10px", borderRadius: 5, border: "1px solid #388bfd66", background: "#1f6feb", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                   Apply
                 </button>

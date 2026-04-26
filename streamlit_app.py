@@ -383,7 +383,7 @@ BENCHMARK_MAP = {
 
 RECOMMENDATIONS = {
     "S&P 500":      dict(exit="PCT_TRAIL", trail=25.0, pos=3,  rank="RS_20",   rebal="QUARTERLY"),
-    "NASDAQ 100":   dict(exit="PCT_TRAIL", trail=24.0, pos=2,  rank="REL_VOL", rebal="QUARTERLY"),
+    "NASDAQ 100":   dict(exit="PCT_TRAIL", trail=22.0, pos=2,  rank="REL_VOL", rebal="QUARTERLY"),
     "Russell 2000": dict(exit="PCT_TRAIL", trail=25.0, pos=10, rank="REL_VOL", rebal="QUARTERLY"),
 }
 
@@ -596,7 +596,7 @@ if page == "Daniel's Breakout":
             pf_rebal   = st.selectbox("Rebalance",    ["NONE", "MONTHLY", "QUARTERLY"],
                                        index=["NONE","MONTHLY","QUARTERLY"].index(rec["rebal"]),
                                        key="pf_rebal")
-            pf_capital = st.number_input("Initial Capital ($)", 1_000, 10_000_000, 100_000, 1_000, key="pf_capital")
+            pf_capital = st.number_input("Initial Capital ($)", 1_000, 10_000_000, 10_000, 1_000, key="pf_capital")
         with col4:
             pf_start   = st.date_input("Start Date", date(2016, 4, 1), key="pf_start")
             pf_end     = st.date_input("End Date",   date.today(), key="pf_end")
@@ -762,8 +762,11 @@ if page == "Daniel's Breakout":
                         "Days Held":   t.days_held,
                         "Exit Reason": t.exit_reason,
                     })
-                st.dataframe(style_trade_log(pd.DataFrame(trade_rows)), use_container_width=True,
-                             hide_index=True, height=min(len(trade_rows), 20) * 35 + 38)
+                if trade_rows:
+                    st.dataframe(style_trade_log(pd.DataFrame(trade_rows)), use_container_width=True,
+                                 hide_index=True, height=min(len(trade_rows), 20) * 35 + 38)
+                else:
+                    st.caption("No trades match the current filters.")
 
 
 # ═════════════════════════════════════════════════════════════════════════════
