@@ -510,11 +510,11 @@ if page == "Daniel's Breakout":
                         "C4": "✓" if sig.c4 else "✗",
                         "C5": "✓" if sig.c5 else "✗",
                         "C6": "✓" if sig.c6 else "✗",
-                        "Mkt Cap":   fmt_mktcap(m.get("market_cap")),
+                        "Mkt Cap": float(m["market_cap"]) if m.get("market_cap") else 0.0,
                         "Sector":    m.get("sector", ""),
                         "Rating":    m.get("analyst_rating", ""),
                     })
-                rows.sort(key=lambda r: (-int(r["Passes"] == "✓"), -r["Criteria"], -r["Rel Vol"]))
+                rows.sort(key=lambda r: (-int(r["Passes"] == "✓"), -r["Criteria"], -r["Rel Vol"], -r["Mkt Cap"]))
                 st.session_state["d_rows"] = rows
                 st.session_state["d_data"] = data
 
@@ -529,7 +529,10 @@ if page == "Daniel's Breakout":
                 )
             else:
                 st.caption(f"**{passes}** full passes · **{len(rows)}** total matches")
-                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True, height=400)
+                df_display = pd.DataFrame(rows)
+                df_display["Mkt Cap"] = df_display["Mkt Cap"].astype(float)
+                st.dataframe(df_display, use_container_width=True, hide_index=True, height=400,
+                             column_config={"Mkt Cap": st.column_config.NumberColumn("Mkt Cap", format="compact")})
 
             if rows:
                 st.subheader("Candlestick Chart")
