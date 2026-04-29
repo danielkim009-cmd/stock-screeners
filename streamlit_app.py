@@ -536,8 +536,17 @@ if page == "Daniel's Breakout":
 
             if rows:
                 st.subheader("Candlestick Chart")
-                tickers_list = sorted(r["Ticker"] for r in rows)
-                sel = st.selectbox("Select ticker to chart", tickers_list, key="d_sel")
+                sort_col, ticker_col = st.columns([1, 3])
+                with sort_col:
+                    d_sort_order = st.selectbox("Sort tickers by", ["Table Order", "Alphabetical"], key="d_sort_order")
+                ticker_name_map = {r["Ticker"]: r["Name"] for r in rows}
+                tickers_table_order = [r["Ticker"] for r in rows]
+                tickers_list = sorted(tickers_table_order) if d_sort_order == "Alphabetical" else tickers_table_order
+                with ticker_col:
+                    sel = st.selectbox(
+                        "Select ticker to chart", tickers_list, key="d_sel",
+                        format_func=lambda t: f"{t} — {ticker_name_map[t]}" if ticker_name_map.get(t) else t,
+                    )
                 if sel:
                     df_c = st.session_state["d_data"].get(sel)
                     if df_c is not None and not df_c.empty:
