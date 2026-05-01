@@ -577,7 +577,11 @@ if page == "Daniel's Breakout":
             st.session_state["pf_rank"]   = r["rank"]
             st.session_state["pf_rebal"]  = r["rebal"]
 
-        pf_uni_lbl = st.selectbox("Universe", PF_UNIVERSES, key="pf_uni_lbl", on_change=_on_pf_universe_change)
+        _top1, _top2 = st.columns(2)
+        with _top1:
+            pf_uni_lbl = st.selectbox("Universe", PF_UNIVERSES, key="pf_uni_lbl", on_change=_on_pf_universe_change)
+        with _top2:
+            pf_capital = st.number_input("Initial Capital ($)", 1_000, 10_000_000, 10_000, 1_000, key="pf_capital")
         pf_uni     = UNIVERSE_OPTIONS[pf_uni_lbl]
         bm_ticker  = BENCHMARK_MAP[pf_uni]
         rec        = RECOMMENDATIONS[pf_uni_lbl]
@@ -608,7 +612,18 @@ if page == "Daniel's Breakout":
             pf_rebal   = st.selectbox("Rebalance",    ["NONE", "MONTHLY", "QUARTERLY"],
                                        index=["NONE","MONTHLY","QUARTERLY"].index(rec["rebal"]),
                                        key="pf_rebal")
-            pf_capital = st.number_input("Initial Capital ($)", 1_000, 10_000_000, 10_000, 1_000, key="pf_capital")
+            _Q_MONTH_OPTIONS = {
+                "Jan / Apr / Jul / Oct": (1, 4, 7, 10),
+                "Feb / May / Aug / Nov": (2, 5, 8, 11),
+                "Mar / Jun / Sep / Dec": (3, 6, 9, 12),
+            }
+            pf_q_months = st.selectbox(
+                "Quarterly Cycle",
+                list(_Q_MONTH_OPTIONS.keys()),
+                index=0,
+                key="pf_q_months",
+                disabled=(pf_rebal != "QUARTERLY"),
+            )
         with col4:
             pf_start   = st.date_input("Start Date", date(2016, 4, 1), key="pf_start")
             pf_end     = st.date_input("End Date",   date.today(), key="pf_end")
@@ -649,6 +664,7 @@ if page == "Daniel's Breakout":
                             backtest_start=str(t_start.date()),
                             rank_by=pf_rank,
                             rebalance=pf_rebal,
+                            quarterly_months=_Q_MONTH_OPTIONS[pf_q_months],
                             initial_capital=pf_capital,
                         )
                         if res is None:

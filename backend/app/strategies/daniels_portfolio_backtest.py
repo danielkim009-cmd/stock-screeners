@@ -86,6 +86,7 @@ def run_daniels_portfolio_backtest(
     atr_multiplier: float = 2.0,
     max_positions: int = 10,
     rebalance: str = "NONE",          # "NONE" | "DAILY" | "WEEKLY" | "MONTHLY"
+    quarterly_months: tuple[int, ...] = (1, 4, 7, 10),  # months that start each quarter
     initial_capital: float = 100_000.0,
     backtest_start: Optional[str] = None,   # "YYYY-MM-DD" — skip bars before this date
     rank_by: str = "REL_VOL",         # "REL_VOL" | "RS_20" | "RS_63" | "RS_126" | "RS_VOL"
@@ -234,7 +235,13 @@ def run_daniels_portfolio_backtest(
         if _rebal == "MONTHLY":
             return d_cur.month != d_prev.month
         if _rebal == "QUARTERLY":
-            return ((d_cur.month - 1) // 3) != ((d_prev.month - 1) // 3)
+            qm = sorted(quarterly_months)
+            def _quarter_idx(m: int) -> int:
+                for i in range(len(qm) - 1, -1, -1):
+                    if m >= qm[i]:
+                        return i
+                return len(qm) - 1  # wrap: month before first quarter start belongs to last quarter
+            return _quarter_idx(d_cur.month) != _quarter_idx(d_prev.month)
         return False
 
     # ── Ranking score helper ─────────────────────────────────────────────── #
