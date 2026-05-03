@@ -87,6 +87,7 @@ def run_daniels_portfolio_backtest(
     max_positions: int = 10,
     rebalance: str = "NONE",          # "NONE" | "DAILY" | "WEEKLY" | "MONTHLY"
     quarterly_months: tuple[int, ...] = (1, 4, 7, 10),  # months that start each quarter
+    rebalance_timing: str = "FIRST",  # "FIRST" | "MID" | "LAST" — when in the month/quarter to rebalance
     initial_capital: float = 100_000.0,
     backtest_start: Optional[str] = None,   # "YYYY-MM-DD" — skip bars before this date
     rank_by: str = "REL_VOL",         # "REL_VOL" | "RS_20" | "RS_63" | "RS_126" | "RS_VOL"
@@ -218,31 +219,43 @@ def run_daniels_portfolio_backtest(
 
     # ── Rebalance cadence helper ─────────────────────────────────────────── #
     _rebal = rebalance.upper()
+    _timing = rebalance_timing.upper()
+
+    # Precompute first / mid / last trading day of each (year, month)
+    from collections import defaultdict as _defaultdict
+    _month_trading_days: dict[tuple[int, int], list[str]] = _defaultdict(list)
+    for d in all_dates:
+        ts = pd.Timestamp(d)
+        _month_trading_days[(ts.year, ts.month)].append(d)
+
+    _rebal_dates: set[str] = set()
+    if _rebal in ("MONTHLY", "QUARTERLY"):
+        qm = sorted(quarterly_months)
+        for (yr, mo), days in _month_trading_days.items():
+            if _rebal == "QUARTERLY" and mo not in qm:
+                continue
+            if not days:
+                continue
+            if _timing == "FIRST":
+                _rebal_dates.add(days[0])
+            elif _timing == "LAST":
+                _rebal_dates.add(days[-1])
+            else:  # MID
+                _rebal_dates.add(days[len(days) // 2])
 
     def is_rebalance_date(di: int, date: str) -> bool:
         if _rebal == "NONE":
             return False
         if _rebal == "DAILY":
             return True
-        # For weekly/monthly use the calendar position of the master date list
         if di == 0:
             return False
-        prev_date = all_dates[di - 1]
-        d_cur  = pd.Timestamp(date)
-        d_prev = pd.Timestamp(prev_date)
         if _rebal == "WEEKLY":
+            prev_date = all_dates[di - 1]
+            d_cur  = pd.Timestamp(date)
+            d_prev = pd.Timestamp(prev_date)
             return d_cur.isocalendar()[1] != d_prev.isocalendar()[1]
-        if _rebal == "MONTHLY":
-            return d_cur.month != d_prev.month
-        if _rebal == "QUARTERLY":
-            qm = sorted(quarterly_months)
-            def _quarter_idx(m: int) -> int:
-                for i in range(len(qm) - 1, -1, -1):
-                    if m >= qm[i]:
-                        return i
-                return len(qm) - 1  # wrap: month before first quarter start belongs to last quarter
-            return _quarter_idx(d_cur.month) != _quarter_idx(d_prev.month)
-        return False
+        return date in _rebal_dates
 
     # ── Ranking score helper ─────────────────────────────────────────────── #
     _rank = rank_by.upper()

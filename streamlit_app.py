@@ -609,23 +609,55 @@ if page == "Daniel's Breakout":
                                        index=["REL_VOL","RS_20","RS_63","RS_126","RS_VOL"].index(rec["rank"]),
                                        key="pf_rank")
         with col3:
-            pf_rebal   = st.selectbox("Rebalance",    ["NONE", "MONTHLY", "QUARTERLY"],
-                                       index=["NONE","MONTHLY","QUARTERLY"].index(rec["rebal"]),
+            _REBAL_OPTIONS = ["NONE", "MONTHLY", "QUARTERLY", "SEMI-ANNUAL", "ANNUAL"]
+            pf_rebal   = st.selectbox("Rebalance", _REBAL_OPTIONS,
+                                       index=_REBAL_OPTIONS.index(rec["rebal"]),
                                        key="pf_rebal")
-            _Q_MONTH_OPTIONS = {
-                "Jan / Apr / Jul / Oct": (1, 4, 7, 10),
-                "Feb / May / Aug / Nov": (2, 5, 8, 11),
-                "Mar / Jun / Sep / Dec": (3, 6, 9, 12),
+            _CYCLE_OPTIONS = {
+                "QUARTERLY": {
+                    "Jan / Apr / Jul / Oct": (1, 4, 7, 10),
+                    "Feb / May / Aug / Nov": (2, 5, 8, 11),
+                    "Mar / Jun / Sep / Dec": (3, 6, 9, 12),
+                },
+                "SEMI-ANNUAL": {
+                    "Jan / Jul": (1, 7),
+                    "Feb / Aug": (2, 8),
+                    "Mar / Sep": (3, 9),
+                    "Apr / Oct": (4, 10),
+                    "May / Nov": (5, 11),
+                    "Jun / Dec": (6, 12),
+                },
+                "ANNUAL": {
+                    "January": (1,), "February": (2,), "March": (3,),
+                    "April": (4,), "May": (5,), "June": (6,),
+                    "July": (7,), "August": (8,), "September": (9,),
+                    "October": (10,), "November": (11,), "December": (12,),
+                },
             }
-            pf_q_months = st.selectbox(
-                "Quarterly Cycle",
-                list(_Q_MONTH_OPTIONS.keys()),
+            _has_cycle = pf_rebal in _CYCLE_OPTIONS
+            _cycle_choices = list(_CYCLE_OPTIONS.get(pf_rebal, {"—": ()}).keys())
+            pf_cycle_lbl = st.selectbox(
+                "Rebalance Cycle",
+                _cycle_choices,
                 index=0,
-                key="pf_q_months",
-                disabled=(pf_rebal != "QUARTERLY"),
+                key="pf_cycle",
+                disabled=(not _has_cycle),
+            )
+            pf_rebal_months = _CYCLE_OPTIONS.get(pf_rebal, {}).get(pf_cycle_lbl, ())
+            _TIMING_OPTIONS = {
+                "First Trading Day": "FIRST",
+                "Mid-Month":         "MID",
+                "Last Trading Day":  "LAST",
+            }
+            pf_timing = st.selectbox(
+                "Rebalance Timing",
+                list(_TIMING_OPTIONS.keys()),
+                index=0,
+                key="pf_timing",
+                disabled=(pf_rebal == "NONE"),
             )
         with col4:
-            pf_start   = st.date_input("Start Date", date(2016, 4, 1), key="pf_start")
+            pf_start   = st.date_input("Start Date", date(2016, 1, 4), key="pf_start")
             pf_end     = st.date_input("End Date",   date.today(), key="pf_end")
 
         if st.button("Run Portfolio Backtest", type="primary", key="pf_run", use_container_width=False):
@@ -663,8 +695,9 @@ if page == "Daniel's Breakout":
                             max_positions=pf_maxpos,
                             backtest_start=str(t_start.date()),
                             rank_by=pf_rank,
-                            rebalance=pf_rebal,
-                            quarterly_months=_Q_MONTH_OPTIONS[pf_q_months],
+                            rebalance=pf_rebal if pf_rebal in ("NONE", "MONTHLY") else "QUARTERLY",
+                            quarterly_months=pf_rebal_months if pf_rebal_months else (1, 4, 7, 10),
+                            rebalance_timing=_TIMING_OPTIONS[pf_timing],
                             initial_capital=pf_capital,
                         )
                         if res is None:

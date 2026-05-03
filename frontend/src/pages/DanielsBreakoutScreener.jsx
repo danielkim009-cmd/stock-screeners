@@ -140,7 +140,7 @@ export default function DanielsBreakoutScreener() {
 
   // Portfolio backtest state
   const [pfPeriod, setPfPeriod] = useState(3650);
-  const [pfStartDate, setPfStartDate] = useState("");
+  const [pfStartDate, setPfStartDate] = useState("2016-01-04");
   const [pfEndDate, setPfEndDate] = useState("");
   const [pfRankBy, setPfRankBy] = useState("RS_20");
   const [pfTradeFilter, setPfTradeFilter] = useState({ ticker: "", exitReason: "ALL", result: "ALL", entryFrom: "", entryTo: "", exitFrom: "", exitTo: "" });
