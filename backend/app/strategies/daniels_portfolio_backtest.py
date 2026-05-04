@@ -1,6 +1,6 @@
 """
 Daniel's Breakout Portfolio Backtester
----------------------------------------
+--------------------------------------
 Simulates running the Daniel's breakout screener daily on the S&P 500,
 holding up to max_positions at one time, equal-weight position sizing.
 
