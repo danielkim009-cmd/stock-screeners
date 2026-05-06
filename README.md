@@ -4,7 +4,7 @@ A multi-strategy stock screening and backtesting app. Available in two flavours 
 
 **Live app:** [daniel-stock-screeners.streamlit.app](https://daniel-stock-screeners.streamlit.app/)
 
-**Video Overview:** [Breakout Strategy & Backtesting Results](https://www.youtube.com/watch?v=ieP0Yw9ZIzM) *(generated with Google NotebookLM)*
+**Video Overview:** [Breakout Strategy & Backtesting Results](https://www.youtube.com/watch?v=ChSFzaS-zFo) *(generated with Google NotebookLM)*
 
 
 ## Strategies
