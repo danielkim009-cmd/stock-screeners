@@ -23,6 +23,7 @@ The most fully-featured component. Runs a walk-forward simulation on the S&P 500
 - **Ranking:** Relative Volume, Relative Strength vs benchmark (RS_20 / RS_63 / RS_126 / RS_VOL)
 - **Rebalancing:** None / Monthly / Quarterly
 - **Custom date range:** Specify exact start and end dates (up to 20 years)
+- **Point-in-time composition:** For S&P 500 and NASDAQ 100, reconstructs historical index membership using Wikipedia's recorded additions/removals. This reduces survivorship bias by only trading stocks that were actually in the index on each date. Enabled by default for S&P 500 and NASDAQ 100.
 - **Benchmark comparison:** SPY/QQQ/IWM buy-and-hold equity curve, CAGR, max drawdown
 - **Metrics:** CAGR, Sharpe ratio, max drawdown (% and $), win rate, avg win/loss %, trade log with filters
 - **Animated equity curve** rendered with TradingView Lightweight Charts
@@ -199,7 +200,7 @@ RANK_BY        = "RS_20"       # REL_VOL | RS_20 | RS_63 | RS_126 | RS_VOL
 
 ## Notes
 
-- **Survivorship bias:** The backtester uses the current index composition, which excludes delisted stocks. Past performance will be overstated to some degree.
+- **Survivorship bias:** By default the backtester uses the current index composition, which excludes delisted stocks. For S&P 500 and NASDAQ 100, enabling "Use point-in-time composition" (on by default) reconstructs historical membership to reduce this bias.
 - **Data source:** All price data is fetched from Yahoo Finance via yfinance. Data quality depends on Yahoo's availability.
 - **Cache:** Universe ticker lists are cached to disk for 24 hours to avoid repeated network calls.
 

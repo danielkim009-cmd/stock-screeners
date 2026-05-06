@@ -19,10 +19,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "backend"))
 from app.data.market_data import (
     compute_ohlcv_extras,
     fetch_bulk_ohlcv,
+    fetch_bulk_ohlcv_tiingo,
     fetch_ohlcv,
     fetch_ticker_info,
 )
 from app.data.universes import fetch_tickers
+from app.data.sp500_history import get_sp500_at_date, get_sp500_pit_data
+from app.data.nasdaq100_history import get_nasdaq100_at_date, get_nasdaq100_pit_data
 from app.strategies.daniels_backtest import run_daniels_backtest
 from app.strategies.daniels_breakout import screen_daniels_breakout
 from app.strategies.daniels_portfolio_backtest import run_daniels_portfolio_backtest
@@ -382,8 +385,8 @@ BENCHMARK_MAP = {
 }
 
 RECOMMENDATIONS = {
-    "S&P 500":      dict(exit="PCT_TRAIL", trail=25.0, pos=3,  rank="RS_20",   rebal="QUARTERLY"),
-    "NASDAQ 100":   dict(exit="PCT_TRAIL", trail=22.0, pos=2,  rank="REL_VOL", rebal="QUARTERLY"),
+    "S&P 500":      dict(exit="PCT_TRAIL", trail=25.0, pos=6,  rank="RS_63",   rebal="QUARTERLY"),
+    "NASDAQ 100":   dict(exit="PCT_TRAIL", trail=22.0, pos=3,  rank="REL_VOL", rebal="QUARTERLY"),
     "Russell 2000": dict(exit="PCT_TRAIL", trail=25.0, pos=10, rank="REL_VOL", rebal="QUARTERLY"),
 }
 
@@ -568,6 +571,35 @@ if page == "Daniel's Breakout":
 
     # ── Portfolio Backtest ────────────────────────────────────────────────────
     with tab_pf:
+        with st.expander("📋 Entry Criteria & Exit Conditions", expanded=False):
+            e1, e2, e3 = st.columns(3)
+            with e1:
+                st.markdown("""
+**Entry Criteria (all must be true)**
+- **C1** Price > 21-day EMA
+- **C2** 21-day EMA ≥ 50-day EMA
+- **C3** 50-day EMA ≥ 100-day EMA
+- **C4** Price at new 6-month high
+- **C5** Today's volume ≥ 1.5× 30-day avg
+- **C6** 10-day avg volume ≥ 500K shares
+""")
+            with e2:
+                st.markdown("""
+**Exit Conditions (configurable)**
+- **PCT_TRAIL** — Exit when price drops N% from peak
+- **SMA50** — Exit when price closes below 50-day SMA
+- **ATR_TRAIL** — Exit when price drops N× ATR(20) from peak
+- **BOTH** — Exit on SMA50 cross OR ATR trailing stop
+""")
+            with e3:
+                st.markdown("""
+**Position Sizing & Ranking**
+- Equal-weight: each position = equity / max positions
+- Entry next bar's open after signal
+- Ties broken by ranking metric (RS or Rel Vol)
+- Rebalance forces exit of non-top-N positions
+""")
+
         def _on_pf_universe_change():
             lbl = st.session_state["pf_uni_lbl"]
             r   = RECOMMENDATIONS[lbl]
@@ -604,6 +636,7 @@ if page == "Daniel's Breakout":
             pf_trail   = st.number_input("Trail %",    1.0, 50.0, float(rec["trail"]), 0.5, key="pf_trail")
         with col2:
             pf_maxpos  = st.number_input("Max Positions", 1, 50, rec["pos"], 1, key="pf_maxpos")
+            pf_min_crit = st.number_input("Min Criteria (of 6)", 5, 6, 6, 1, key="pf_min_crit")
             pf_rank    = st.selectbox("Rank By",
                                        ["REL_VOL", "RS_20", "RS_63", "RS_126", "RS_VOL"],
                                        index=["REL_VOL","RS_20","RS_63","RS_126","RS_VOL"].index(rec["rank"]),
@@ -660,6 +693,23 @@ if page == "Daniel's Breakout":
             pf_start   = st.date_input("Start Date", date(2016, 1, 4), key="pf_start")
             pf_end     = st.date_input("End Date",   date.today(), key="pf_end")
 
+        pf_pit = st.checkbox(
+            "Use point-in-time composition (reduces survivorship bias)",
+            value=(pf_uni in ("sp500", "nasdaq100")),
+            key="pf_pit",
+            disabled=(pf_uni not in ("sp500", "nasdaq100")),
+            help="Reconstruct the index membership as of the start date using Wikipedia's historical changes. Available for S&P 500 and NASDAQ 100.",
+        )
+        # Data source selector — hidden until TIINGO_API_KEY is configured
+        # pf_data_src = st.selectbox(
+        #     "Data Source",
+        #     ["Yahoo Finance", "Tiingo"],
+        #     index=0,
+        #     key="pf_data_src",
+        #     help="Tiingo includes delisted/removed stocks — better for point-in-time backtests. Requires TIINGO_API_KEY.",
+        # )
+        pf_data_src = "Yahoo Finance"
+
         if st.button("Run Portfolio Backtest", type="primary", key="pf_run", use_container_width=False):
             if pf_start >= pf_end:
                 st.error("Start date must be before end date.")
@@ -671,9 +721,29 @@ if page == "Daniel's Breakout":
                     t_end     = _pd.Timestamp(str(pf_end))
                     fetch_days = int((today_ts - t_start).days) + 220
 
-                    tickers    = fetch_tickers(pf_uni)
+                    pit_initial_set = None
+                    pit_changes_list = None
+                    if pf_pit and pf_uni == "sp500":
+                        pit_initial, pit_all, pit_changes_list = get_sp500_pit_data(str(pf_start), str(pf_end))
+                        pit_initial_set = set(pit_initial)
+                        tickers = pit_all
+                        st.info(f"Using rolling point-in-time S&P 500 composition: {len(pit_initial)} tickers at start, {len(tickers)} total across range, {len(pit_changes_list)} changes")
+                    elif pf_pit and pf_uni == "nasdaq100":
+                        pit_initial, pit_all, pit_changes_list = get_nasdaq100_pit_data(str(pf_start), str(pf_end))
+                        pit_initial_set = set(pit_initial)
+                        tickers = pit_all
+                        st.info(f"Using rolling point-in-time NASDAQ 100 composition: {len(pit_initial)} tickers at start, {len(tickers)} total across range, {len(pit_changes_list)} changes")
+                    else:
+                        tickers = fetch_tickers(pf_uni)
                     all_tkrs   = list(set(tickers + [bm_ticker]))
-                    raw_dfs    = fetch_bulk_ohlcv(all_tkrs, period_days=fetch_days)
+                    if pf_data_src == "Tiingo":
+                        try:
+                            raw_dfs = fetch_bulk_ohlcv_tiingo(all_tkrs, period_days=fetch_days)
+                        except ValueError as e:
+                            st.error(str(e))
+                            st.stop()
+                    else:
+                        raw_dfs = fetch_bulk_ohlcv(all_tkrs, period_days=fetch_days)
 
                     spy_df     = raw_dfs.pop(bm_ticker, None)
                     if spy_df is not None and not spy_df.empty:
@@ -693,12 +763,15 @@ if page == "Daniel's Breakout":
                             exit_mode=pf_exit,
                             trail_pct=pf_trail,
                             max_positions=pf_maxpos,
+                            min_criteria=pf_min_crit,
                             backtest_start=str(t_start.date()),
                             rank_by=pf_rank,
                             rebalance=pf_rebal if pf_rebal in ("NONE", "MONTHLY") else "QUARTERLY",
                             quarterly_months=pf_rebal_months if pf_rebal_months else (1, 4, 7, 10),
                             rebalance_timing=_TIMING_OPTIONS[pf_timing],
                             initial_capital=pf_capital,
+                            pit_initial=pit_initial_set,
+                            pit_changes=pit_changes_list,
                         )
                         if res is None:
                             st.error("Not enough data to run portfolio backtest.")

@@ -1,13 +1,15 @@
 """
-OHLCV data fetcher using yfinance with in-memory caching.
+OHLCV data fetcher using yfinance (default) or Tiingo with in-memory caching.
 """
 from __future__ import annotations
 
+import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import Optional
 
+import httpx
 import pandas as pd
 import yfinance as yf
 
@@ -96,6 +98,91 @@ def fetch_bulk_ohlcv(
                         continue
         except Exception:
             continue
+    return result
+
+
+# --------------------------------------------------------------------------- #
+#  Tiingo data fetcher
+# --------------------------------------------------------------------------- #
+
+_TIINGO_BASE = "https://api.tiingo.com/tiingo/daily"
+
+
+def _get_tiingo_key() -> Optional[str]:
+    """Read Tiingo API key from env var or Streamlit secrets."""
+    key = os.environ.get("TIINGO_API_KEY")
+    if key:
+        return key
+    try:
+        import streamlit as st
+        return st.secrets.get("TIINGO_API_KEY")
+    except Exception:
+        return None
+
+
+def _fetch_one_tiingo(
+    ticker: str, start_str: str, end_str: str, api_key: str
+) -> tuple[str, Optional[pd.DataFrame]]:
+    """Fetch OHLCV for a single ticker from Tiingo."""
+    url = f"{_TIINGO_BASE}/{ticker}/prices"
+    params = {
+        "startDate": start_str,
+        "endDate": end_str,
+        "format": "json",
+        "token": api_key,
+    }
+    try:
+        resp = httpx.get(url, params=params, timeout=30)
+        if resp.status_code != 200:
+            return ticker, None
+        data = resp.json()
+        if not data:
+            return ticker, None
+        df = pd.DataFrame(data)
+        df["date"] = pd.to_datetime(df["date"]).dt.tz_localize(None)
+        df = df.set_index("date")
+        df = df.rename(columns={
+            "adjOpen": "Open", "adjHigh": "High",
+            "adjLow": "Low", "adjClose": "Close",
+            "adjVolume": "Volume",
+        })
+        df = df[["Open", "High", "Low", "Close", "Volume"]].dropna()
+        if df.empty:
+            return ticker, None
+        return ticker, df
+    except Exception:
+        return ticker, None
+
+
+def fetch_bulk_ohlcv_tiingo(
+    tickers: list[str],
+    period_days: int = 365,
+    max_workers: int = 10,
+) -> dict[str, pd.DataFrame]:
+    """
+    Fetch OHLCV for multiple tickers from Tiingo in parallel.
+    Returns {ticker: DataFrame}. Requires TIINGO_API_KEY env var.
+    """
+    api_key = _get_tiingo_key()
+    if not api_key:
+        raise ValueError("TIINGO_API_KEY not set. Add it to your environment or Streamlit secrets.")
+
+    end = datetime.today() + timedelta(days=1)
+    start = end - timedelta(days=period_days + 1)
+    start_str = start.strftime("%Y-%m-%d")
+    end_str = end.strftime("%Y-%m-%d")
+
+    result = {}
+    workers = min(max_workers, len(tickers))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [
+            pool.submit(_fetch_one_tiingo, t, start_str, end_str, api_key)
+            for t in tickers
+        ]
+        for f in futures:
+            ticker, df = f.result()
+            if df is not None and not df.empty:
+                result[ticker] = df
     return result
 
 

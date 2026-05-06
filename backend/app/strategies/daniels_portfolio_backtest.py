@@ -90,7 +90,10 @@ def run_daniels_portfolio_backtest(
     rebalance_timing: str = "FIRST",  # "FIRST" | "MID" | "LAST" — when in the month/quarter to rebalance
     initial_capital: float = 100_000.0,
     backtest_start: Optional[str] = None,   # "YYYY-MM-DD" — skip bars before this date
+    min_criteria: int = 6,            # minimum criteria to trigger signal (5 or 6)
     rank_by: str = "REL_VOL",         # "REL_VOL" | "RS_20" | "RS_63" | "RS_126" | "RS_VOL"
+    pit_initial: Optional[set[str]] = None,     # point-in-time: tickers at start date
+    pit_changes: Optional[list[dict]] = None,   # point-in-time: [{date, added, removed}, ...] sorted ascending
 ) -> Optional[PortfolioBacktestResult]:
     """
     Run a portfolio-level walk-forward backtest of Daniel's breakout strategy.
@@ -162,7 +165,8 @@ def run_daniels_portfolio_backtest(
         c4 = np.where(np.isnan(high_6m),   False, close >= high_6m)
         c5 = rel_vol >= 1.5
         c6 = np.where(np.isnan(avg_vol_10d), False, avg_vol_10d >= 1_000_000)
-        signal = c1 & c2 & c3 & c4 & c5 & c6
+        criteria_met = c1.astype(int) + c2.astype(int) + c3.astype(int) + c4.astype(int) + c5.astype(int) + c6.astype(int)
+        signal = criteria_met >= min_criteria
 
         date_to_idx = {d: i for i, d in enumerate(dates)}
 
@@ -286,6 +290,13 @@ def run_daniels_portfolio_backtest(
     equity_curve: list[dict] = []
     position_counts: list[int] = []
 
+    # Point-in-time composition tracking
+    if pit_initial is not None:
+        active_tickers = set(pit_initial) & set(precomputed.keys())
+    else:
+        active_tickers = set(precomputed.keys())
+    pit_change_idx = 0  # pointer into pit_changes (sorted ascending by date)
+
     def portfolio_value(date: str) -> float:
         total = cash
         for t, pos in positions.items():
@@ -309,6 +320,18 @@ def run_daniels_portfolio_backtest(
             continue
         if backtest_start and date < backtest_start:
             continue
+
+        # ── Apply point-in-time composition changes for this date ────────── #
+        if pit_changes:
+            while pit_change_idx < len(pit_changes):
+                ch = pit_changes[pit_change_idx]
+                if ch["date"] > date:
+                    break
+                if ch["added"] and ch["added"] in precomputed:
+                    active_tickers.add(ch["added"])
+                if ch["removed"]:
+                    active_tickers.discard(ch["removed"])
+                pit_change_idx += 1
 
         # ── 3a. Enter pending positions at today's open ───────────────────── #
         for ticker, _ in pending:
@@ -402,9 +425,12 @@ def run_daniels_portfolio_backtest(
 
         # ── 3b2. Rebalance: force-exit positions outside top-N signals ──────── #
         if is_rebalance_date(di, date) and positions:
-            # Build full ranked signal list for today
+            # Build full ranked signal list for today (only active tickers)
             all_signals: list[tuple[str, float]] = []
-            for ticker, pc in precomputed.items():
+            for ticker in active_tickers:
+                pc = precomputed.get(ticker)
+                if pc is None:
+                    continue
                 idx = pc["date_to_idx"].get(date)
                 if idx is None or idx < WARMUP:
                     continue
@@ -449,11 +475,14 @@ def run_daniels_portfolio_backtest(
             slots = max_positions - len(positions)
             pending = new_entries[:slots * 2]
 
-        # ── 3c. Scan for new breakout signals ────────────────────────────── #
+        # ── 3c. Scan for new breakout signals (only active tickers) ──────── #
         if len(positions) < max_positions:
             new_signals: list[tuple[str, float]] = []
-            for ticker, pc in precomputed.items():
+            for ticker in active_tickers:
                 if ticker in positions:
+                    continue
+                pc = precomputed.get(ticker)
+                if pc is None:
                     continue
                 idx = pc["date_to_idx"].get(date)
                 if idx is None or idx < WARMUP:
