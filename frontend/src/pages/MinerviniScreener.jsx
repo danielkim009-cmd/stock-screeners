@@ -166,6 +166,7 @@ export default function MinerviniScreener() {
   const [btPeriod, setBtPeriod] = useState(730);
   const [btExitMode, setBtExitMode] = useState("SMA50");
   const [btTrailPct, setBtTrailPct] = useState(8);
+  const [btYearFilter, setBtYearFilter] = useState("ALL");
 
   const selectedUniverse = UNIVERSES.find(u => u.id === universe);
 
@@ -331,10 +332,18 @@ export default function MinerviniScreener() {
 
           {btData.trades.length === 0 ? (
             <p style={{ color: "#8b949e", fontSize: 13 }}>No trades triggered in this period.</p>
-          ) : (
+          ) : (() => {
+            const years = ["ALL", ...Array.from(new Set(btData.trades.map(t => t.entry_date.slice(0, 4)))).sort()];
+            const filtered = btYearFilter === "ALL" ? btData.trades : btData.trades.filter(t => t.entry_date.startsWith(btYearFilter));
+            return (
             <div style={{ overflowX: "auto" }}>
-              <div style={{ fontSize: 11, color: "#8b949e", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
-                Trade Log ({btData.trades.length} trade{btData.trades.length !== 1 ? "s" : ""})
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <span style={{ fontSize: 11, color: "#8b949e", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  Trade Log ({filtered.length}/{btData.trades.length} trade{btData.trades.length !== 1 ? "s" : ""})
+                </span>
+                <select value={btYearFilter} onChange={e => setBtYearFilter(e.target.value)} style={{ ...selectStyle, fontSize: 12, padding: "3px 8px" }}>
+                  {years.map(y => <option key={y} value={y}>{y === "ALL" ? "All years" : y}</option>)}
+                </select>
               </div>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
@@ -345,7 +354,7 @@ export default function MinerviniScreener() {
                   </tr>
                 </thead>
                 <tbody>
-                  {btData.trades.map((t, i) => (
+                  {filtered.map((t, i) => (
                     <tr key={i} style={{ background: t.pnl_pct > 0 ? "#0d2b0d" : t.pnl_pct < 0 ? "#2d1b1b" : "transparent" }}>
                       <td style={td}>{i + 1}</td>
                       <td style={{ ...td, color: "#8b949e" }}>{t.entry_date}</td>
@@ -369,7 +378,8 @@ export default function MinerviniScreener() {
                 </tbody>
               </table>
             </div>
-          )}
+            );
+          })()}
         </>
       )}
 

@@ -206,7 +206,7 @@ new ResizeObserver(() => {{
 </script></body></html>"""
 
 
-def candlestick_chart_html(df, ticker, ema21=None, ema50=None, ema100=None, height=550):
+def candlestick_chart_html(df, ticker, ema21=None, ema50=None, ema100=None, ema200=None, height=550):
     """TradingView Lightweight Charts — returns embeddable HTML string."""
     candle_data, vol_data, prev_close_map = [], [], {}
     prev_c = None
@@ -231,6 +231,7 @@ def candlestick_chart_html(df, ticker, ema21=None, ema50=None, ema100=None, heig
     ema21_data  = to_tv(ema21)
     ema50_data  = to_tv(ema50)
     ema100_data = to_tv(ema100)
+    ema200_data = to_tv(ema200)
 
     # Default info bar (last bar)
     last = df.iloc[-1]
@@ -244,6 +245,7 @@ def candlestick_chart_html(df, ticker, ema21=None, ema50=None, ema100=None, heig
     d_e21  = f"{ema21.iloc[-1]:.2f}"  if ema21  is not None else "—"
     d_e50  = f"{ema50.iloc[-1]:.2f}"  if ema50  is not None else "—"
     d_e100 = f"{ema100.iloc[-1]:.2f}" if ema100 is not None else "—"
+    d_e200 = f"{ema200.iloc[-1]:.2f}" if ema200 is not None else "—"
     d_chg_txt = f"{d_sign}{d_chg:.2f} ({d_sign}{d_pct:.2f}%)"
 
     chart_h = height - 40  # leave 40 px for info bar
@@ -269,6 +271,7 @@ html, body {{ background:#0d1117; overflow:hidden; font-family:'Courier New',mon
   <span><span class="lbl">EMA21</span><span id="ie21" style="color:#f8c518;font-weight:700">{d_e21}</span></span>
   <span><span class="lbl">EMA50</span><span id="ie50" style="color:#58a6ff;font-weight:700">{d_e50}</span></span>
   <span><span class="lbl">EMA100</span><span id="ie100" style="color:#bc8cff;font-weight:700">{d_e100}</span></span>
+  <span><span class="lbl">EMA200</span><span id="ie200" style="color:#ff7b72;font-weight:700">{d_e200}</span></span>
 </div>
 <div id="chart"></div>
 <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
@@ -278,6 +281,7 @@ const volData      = {json.dumps(vol_data)};
 const ema21Data    = {json.dumps(ema21_data)};
 const ema50Data    = {json.dumps(ema50_data)};
 const ema100Data   = {json.dumps(ema100_data)};
+const ema200Data   = {json.dumps(ema200_data)};
 const prevCloseMap = {json.dumps(prev_close_map)};
 
 function fmtVol(v) {{
@@ -311,7 +315,7 @@ const vSeries = chart.addHistogramSeries({{ priceFormat:{{type:'volume'}}, price
 chart.priceScale('vol').applyOptions({{ scaleMargins:{{top:0.78, bottom:0}}, visible:false }});
 vSeries.setData(volData);
 
-let s21, s50, s100;
+let s21, s50, s100, s200;
 if (ema21Data.length) {{
   s21 = chart.addLineSeries({{ color:'#f8c518', lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false }});
   s21.setData(ema21Data);
@@ -323,6 +327,10 @@ if (ema50Data.length) {{
 if (ema100Data.length) {{
   s100 = chart.addLineSeries({{ color:'#bc8cff', lineWidth:1.5, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false }});
   s100.setData(ema100Data);
+}}
+if (ema200Data.length) {{
+  s200 = chart.addLineSeries({{ color:'#ff7b72', lineWidth:2, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false }});
+  s200.setData(ema200Data);
 }}
 
 chart.subscribeCrosshairMove(param => {{
@@ -337,6 +345,7 @@ chart.subscribeCrosshairMove(param => {{
   const e21  = s21  ? (param.seriesData.get(s21)?.value?.toFixed(2)  ?? '—') : '—';
   const e50  = s50  ? (param.seriesData.get(s50)?.value?.toFixed(2)  ?? '—') : '—';
   const e100 = s100 ? (param.seriesData.get(s100)?.value?.toFixed(2) ?? '—') : '—';
+  const e200 = s200 ? (param.seriesData.get(s200)?.value?.toFixed(2) ?? '—') : '—';
   document.getElementById('io').textContent  = bar.open.toFixed(2);
   document.getElementById('ih').textContent  = bar.high.toFixed(2);
   document.getElementById('il').textContent  = bar.low.toFixed(2);
@@ -346,6 +355,7 @@ chart.subscribeCrosshairMove(param => {{
   document.getElementById('ie21').textContent  = e21;
   document.getElementById('ie50').textContent  = e50;
   document.getElementById('ie100').textContent = e100;
+  document.getElementById('ie200').textContent = e200;
 }});
 
 chart.timeScale().fitContent();
@@ -385,9 +395,9 @@ BENCHMARK_MAP = {
 }
 
 RECOMMENDATIONS = {
-    "S&P 500":      dict(exit="PCT_TRAIL", trail=25.0, pos=6,  rank="RS_63",   rebal="QUARTERLY"),
-    "NASDAQ 100":   dict(exit="PCT_TRAIL", trail=22.0, pos=3,  rank="REL_VOL", rebal="QUARTERLY"),
-    "Russell 2000": dict(exit="PCT_TRAIL", trail=25.0, pos=10, rank="REL_VOL", rebal="QUARTERLY"),
+    "S&P 500":      dict(exit="PCT_TRAIL", trail=25.0, pos=6,  rank="RS_126",  rebal="MONTHLY",   lookback=63),
+    "NASDAQ 100":   dict(exit="PCT_TRAIL", trail=24.0, pos=3,  rank="RS_126",  rebal="MONTHLY",   lookback=63),
+    "Russell 2000": dict(exit="PCT_TRAIL", trail=25.0, pos=10, rank="REL_VOL", rebal="QUARTERLY", lookback=126),
 }
 
 PERIOD_OPTIONS  = {1: 365, 2: 730, 3: 1095, 5: 1825, 10: 3650, 20: 7300}
@@ -506,6 +516,8 @@ if page == "Daniel's Breakout":
                         "EMA21":     round(sig.ema21, 2),
                         "EMA50":     round(sig.ema50, 2),
                         "EMA100":    round(sig.ema100, 2),
+                        "EMA150":    round(sig.ema150, 2),
+                        "EMA200":    round(sig.ema200, 2),
                         "6m High":   round(sig.high_6m, 2),
                         "C1": "✓" if sig.c1 else "✗",
                         "C2": "✓" if sig.c2 else "✗",
@@ -558,13 +570,15 @@ if page == "Daniel's Breakout":
                         ema21  = close.ewm(span=21,  adjust=False).mean()
                         ema50  = close.ewm(span=50,  adjust=False).mean()
                         ema100 = close.ewm(span=100, adjust=False).mean()
+                        ema200 = close.ewm(span=200, adjust=False).mean()
                         cutoff = df_c.index[-1] - pd.Timedelta(days=365)
                         df_show     = df_c[df_c.index >= cutoff]
                         ema21_show  = ema21[ema21.index >= cutoff]
                         ema50_show  = ema50[ema50.index >= cutoff]
                         ema100_show = ema100[ema100.index >= cutoff]
+                        ema200_show = ema200[ema200.index >= cutoff]
                         components.html(
-                            candlestick_chart_html(df_show, sel, ema21_show, ema50_show, ema100_show),
+                            candlestick_chart_html(df_show, sel, ema21_show, ema50_show, ema100_show, ema200_show),
                             height=550,
                             scrolling=False,
                         )
@@ -603,11 +617,12 @@ if page == "Daniel's Breakout":
         def _on_pf_universe_change():
             lbl = st.session_state["pf_uni_lbl"]
             r   = RECOMMENDATIONS[lbl]
-            st.session_state["pf_exit"]   = r["exit"]
-            st.session_state["pf_trail"]  = float(r["trail"])
-            st.session_state["pf_maxpos"] = r["pos"]
-            st.session_state["pf_rank"]   = r["rank"]
-            st.session_state["pf_rebal"]  = r["rebal"]
+            st.session_state["pf_exit"]          = r["exit"]
+            st.session_state["pf_trail"]         = float(r["trail"])
+            st.session_state["pf_maxpos"]        = r["pos"]
+            st.session_state["pf_rank"]          = r["rank"]
+            st.session_state["pf_rebal"]         = r["rebal"]
+            st.session_state["pf_high_lookback"] = r["lookback"]
 
         _top1, _top2 = st.columns(2)
         with _top1:
@@ -630,13 +645,22 @@ if page == "Daniel's Breakout":
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            pf_exit    = st.selectbox("Exit Mode",     ["PCT_TRAIL", "SMA50", "ATR_TRAIL", "BOTH"],
-                                       index=["PCT_TRAIL","SMA50","ATR_TRAIL","BOTH"].index(rec["exit"]),
-                                       key="pf_exit")
+            pf_exit    = st.selectbox("Exit Mode",     ["PCT_TRAIL", "SMA50", "ATR_TRAIL", "BOTH", "REBALANCE"],
+                                       index=["PCT_TRAIL","SMA50","ATR_TRAIL","BOTH","REBALANCE"].index(rec["exit"]),
+                                       key="pf_exit",
+                                       help="REBALANCE: no intra-bar stops — hold until the next rebalance date (or end of backtest)")
             pf_trail   = st.number_input("Trail %",    1.0, 50.0, float(rec["trail"]), 0.5, key="pf_trail")
         with col2:
             pf_maxpos  = st.number_input("Max Positions", 1, 50, rec["pos"], 1, key="pf_maxpos")
             pf_min_crit = st.number_input("Min Criteria (of 6)", 5, 6, 6, 1, key="pf_min_crit")
+            _LOOKBACK_OPTIONS = [63, 126, 189, 252]
+            pf_high_lookback = st.selectbox(
+                "C4 — High Lookback",
+                _LOOKBACK_OPTIONS,
+                index=_LOOKBACK_OPTIONS.index(rec["lookback"]),
+                format_func=lambda v: {63: "3 months", 126: "6 months", 189: "9 months", 252: "12 months"}[v],
+                key="pf_high_lookback",
+            )
             pf_rank    = st.selectbox("Rank By",
                                        ["REL_VOL", "RS_20", "RS_63", "RS_126", "RS_VOL"],
                                        index=["REL_VOL","RS_20","RS_63","RS_126","RS_VOL"].index(rec["rank"]),
@@ -764,6 +788,7 @@ if page == "Daniel's Breakout":
                             trail_pct=pf_trail,
                             max_positions=pf_maxpos,
                             min_criteria=pf_min_crit,
+                            high_lookback=pf_high_lookback,
                             backtest_start=str(t_start.date()),
                             rank_by=pf_rank,
                             rebalance=pf_rebal if pf_rebal in ("NONE", "MONTHLY") else "QUARTERLY",
@@ -860,7 +885,7 @@ if page == "Daniel's Breakout":
             # Trade log with filters
             if r.trades:
                 st.subheader("Trade Log")
-                fc1, fc2, fc3, fc4 = st.columns([2, 2, 2, 1])
+                fc1, fc2, fc3, fc4, fc5 = st.columns([2, 2, 2, 2, 1])
                 with fc1:
                     pf_f_tkr = st.text_input("Ticker filter", key="pf_f_tkr").upper().strip()
                 with fc2:
@@ -872,6 +897,9 @@ if page == "Daniel's Breakout":
                 with fc3:
                     pf_f_res = st.selectbox("Result", ["ALL", "Win", "Loss"], key="pf_f_res")
                 with fc4:
+                    trade_years = sorted({t.entry_date[:4] for t in r.trades})
+                    pf_f_year = st.selectbox("Year", ["ALL"] + trade_years, key="pf_f_year")
+                with fc5:
                     st.write(""); st.write("")
                     st.caption(f"{r.n_trades} total")
 
@@ -884,6 +912,8 @@ if page == "Daniel's Breakout":
                     if pf_f_res == "Win"  and t.pnl_pct <= 0:
                         continue
                     if pf_f_res == "Loss" and t.pnl_pct >= 0:
+                        continue
+                    if pf_f_year != "ALL" and not t.entry_date.startswith(pf_f_year):
                         continue
                     trade_rows.append({
                         "#":           i,

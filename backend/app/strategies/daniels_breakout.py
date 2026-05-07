@@ -11,6 +11,9 @@ Criteria:
   C5: Today's volume ≥ 1.5× 30-day average volume (relative volume surge)
   C6: 10-day average volume ≥ 1,000,000 shares (liquidity)
 
+Additional EMAs computed (informational):
+  EMA150, EMA200
+
 Results sorted by relative volume descending (highest surge first).
 """
 from __future__ import annotations
@@ -28,6 +31,8 @@ class DanielsBreakoutSignal:
     ema21: float
     ema50: float
     ema100: float
+    ema150: float
+    ema200: float
     high_6m: float        # highest close in prior 125 trading days
     rel_volume: float     # today's vol ÷ 30-day avg vol
     avg_vol_10d: float    # 10-day average volume (shares)
@@ -51,7 +56,7 @@ def screen_daniels_breakout(
     """
     Apply Daniel's breakout criteria to one stock's OHLCV DataFrame.
 
-    df             — OHLCV DataFrame; needs ≥ 130 rows (100 for EMA100 + vol buffer)
+    df             — OHLCV DataFrame; needs ≥ 210 rows (200 for EMA200 warmup + vol buffer)
     ticker         — symbol string
     min_rel_vol    — C5 threshold: min relative volume vs 30-day avg (default 1.5)
     min_avg_vol    — C6 threshold: min 10-day average volume in shares (default 1,000,000)
@@ -59,7 +64,7 @@ def screen_daniels_breakout(
 
     Returns DanielsBreakoutSignal or None if data is insufficient.
     """
-    if len(df) < 130:
+    if len(df) < 210:
         return None
 
     close  = df["Close"]
@@ -68,11 +73,15 @@ def screen_daniels_breakout(
     ema21  = close.ewm(span=21,  adjust=False).mean()
     ema50  = close.ewm(span=50,  adjust=False).mean()
     ema100 = close.ewm(span=100, adjust=False).mean()
+    ema150 = close.ewm(span=150, adjust=False).mean()
+    ema200 = close.ewm(span=200, adjust=False).mean()
 
     last_close  = float(close.iloc[-1])
     last_ema21  = float(ema21.iloc[-1])
     last_ema50  = float(ema50.iloc[-1])
     last_ema100 = float(ema100.iloc[-1])
+    last_ema150 = float(ema150.iloc[-1])
+    last_ema200 = float(ema200.iloc[-1])
 
     # New high: highest close in the `high_lookback` bars BEFORE today
     lookback     = min(high_lookback + 1, len(df) - 1)
@@ -100,6 +109,8 @@ def screen_daniels_breakout(
         ema21=round(last_ema21, 2),
         ema50=round(last_ema50, 2),
         ema100=round(last_ema100, 2),
+        ema150=round(last_ema150, 2),
+        ema200=round(last_ema200, 2),
         high_6m=round(high_6m, 2),
         rel_volume=rel_volume,
         avg_vol_10d=round(avg_vol_10d, 0),

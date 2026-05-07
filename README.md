@@ -11,9 +11,22 @@ A multi-strategy stock screening and backtesting app. Available in two flavours 
 
 | Strategy | Description |
 |---|---|
-| **Daniel's Breakout** | EMA momentum stack (21/50/100) + volume-confirmed 6-month high breakout. Includes single-ticker and portfolio backtesting. |
+| **Daniel's Breakout** | EMA momentum stack (21/50/100) + volume-confirmed breakout to a new high. EMA150 and EMA200 are displayed on charts as informational overlays. Includes single-ticker and portfolio backtesting. |
 | **Turtle Trading** | Classic Donchian channel breakout system (20-day S1, 55-day S2) with ATR(20) trailing stop. |
 | **Minervini SEPA** | Stan Minervini's 8-criteria Specific Entry Point Analysis trend template with RS rating vs universe. |
+
+### Daniel's Breakout — Screening Criteria
+
+| # | Criterion | Description |
+|---|---|---|
+| C1 | Price > EMA21 | Price above the 21-day EMA |
+| C2 | EMA21 ≥ EMA50 | Short-term EMA above mid-term EMA |
+| C3 | EMA50 ≥ EMA100 | Mid-term EMA above long-term EMA |
+| C4 | New N-month high | Price at or above highest close in prior N months (adjustable: 3/6/9/12) |
+| C5 | Rel Vol ≥ 1.5× | Today's volume at least 1.5× the 30-day average |
+| C6 | Avg Vol ≥ 1M | 10-day average volume ≥ 1,000,000 shares |
+
+> EMA150 and EMA200 are computed and shown on charts for visual reference but are not part of the pass/fail criteria.
 
 ## Portfolio Backtester (Daniel's Breakout)
 
@@ -22,19 +35,20 @@ The most fully-featured component. Runs a walk-forward simulation on the S&P 500
 - **Exit modes:** SMA50 cross, 2×ATR(20) trailing stop, percentage trailing stop
 - **Ranking:** Relative Volume, Relative Strength vs benchmark (RS_20 / RS_63 / RS_126 / RS_VOL)
 - **Rebalancing:** None / Monthly / Quarterly
+- **C4 High Lookback:** Configurable new-high window — 3 months (63 bars), 6 months, 9 months, or 12 months
 - **Custom date range:** Specify exact start and end dates (up to 20 years)
 - **Point-in-time composition:** For S&P 500 and NASDAQ 100, reconstructs historical index membership using Wikipedia's recorded additions/removals. This reduces survivorship bias by only trading stocks that were actually in the index on each date. Enabled by default for S&P 500 and NASDAQ 100.
 - **Benchmark comparison:** SPY/QQQ/IWM buy-and-hold equity curve, CAGR, max drawdown
 - **Metrics:** CAGR, Sharpe ratio, max drawdown (% and $), win rate, avg win/loss %, trade log with filters
 - **Animated equity curve** rendered with TradingView Lightweight Charts
 
-### Recommended Settings (from 11-window sliding backtest, 2006–2026)
+### Recommended Settings
 
-| Universe | Trailing Stop | Max Positions | Ranking | Rebalance | Avg CAGR (10yr) |
+| Universe | Trailing Stop | Max Positions | Ranking | Rebalance | C4 Lookback |
 |---|---|---|---|---|---|
-| S&P 500 | 25% | 3 | RS_20 | Quarterly | +22.3% vs SPY +11.8% |
-| NASDAQ 100 | 24% | 2 | Rel Vol | Quarterly | +26.6% vs QQQ +17.3% |
-| Russell 2000 | 30% | 10 | — | Quarterly | — |
+| S&P 500 | 25% | 6 | RS_126 | Monthly | 3 months |
+| NASDAQ 100 | 24% | 3 | RS_126 | Monthly | 3 months |
+| Russell 2000 | 25% | 10 | Rel Vol | Quarterly | 6 months |
 
 > 10-year sliding window backtest of Nasdaq 100 with maximum of 2 stocks at a time: [`backend/sliding_window_results_nasdaq100.html`](https://danielkim009-cmd.github.io/stock-screeners/backend/sliding_window_results_nasdaq100.html).
 >
@@ -79,8 +93,8 @@ Open: **http://localhost:8501**
 
 | Feature | Streamlit |
 |---|---|
-| Charts | Plotly (interactive, zoom/pan) |
-| Candlestick | ✓ with EMA overlays |
+| Charts | TradingView Lightweight Charts |
+| Candlestick | ✓ with EMA21/50/100/200 overlays |
 | Equity curve | ✓ strategy vs benchmark |
 | Trade log filters | ✓ |
 | Portfolio backtest | ✓ |
@@ -109,7 +123,7 @@ Open: **http://localhost:5173**
 | Feature | React + FastAPI |
 |---|---|
 | Charts | TradingView Lightweight Charts |
-| Candlestick | ✓ with EMA overlays |
+| Candlestick | ✓ with EMA21/50/100/200 overlays |
 | Equity curve | ✓ strategy vs benchmark |
 | Trade log filters | ✓ |
 | Portfolio backtest | ✓ |
@@ -193,9 +207,10 @@ Configure the test at the top of the file:
 ```python
 EXIT_MODE      = "PCT_TRAIL"
 TRAIL_PCT      = 25.0
-MAX_POSITIONS  = 9
-REBALANCE      = "QUARTERLY"
-RANK_BY        = "RS_20"       # REL_VOL | RS_20 | RS_63 | RS_126 | RS_VOL
+MAX_POSITIONS  = 6
+REBALANCE      = "MONTHLY"
+RANK_BY        = "RS_126"      # REL_VOL | RS_20 | RS_63 | RS_126 | RS_VOL
+HIGH_LOOKBACK  = 63            # trading bars: 63=3m, 126=6m, 189=9m, 252=12m
 ```
 
 ## Notes

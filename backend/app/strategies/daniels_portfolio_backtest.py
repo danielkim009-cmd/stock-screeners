@@ -4,7 +4,7 @@ Daniel's Breakout Portfolio Backtester
 Simulates running the Daniel's breakout screener daily on the S&P 500,
 holding up to max_positions at one time, equal-weight position sizing.
 
-Entry:  All 6 Daniel criteria met at close of bar i → enter next bar's open.
+Entry:  All 8 Daniel criteria met at close of bar i → enter next bar's open.
 Ranking: ties broken by rel_vol descending (biggest institutional surge first).
 Exit:   Configurable — SMA50 / 2×ATR(20) trailing stop / PCT trailing stop.
 Benchmark: SPY buy-and-hold over the same period.
@@ -90,7 +90,8 @@ def run_daniels_portfolio_backtest(
     rebalance_timing: str = "FIRST",  # "FIRST" | "MID" | "LAST" — when in the month/quarter to rebalance
     initial_capital: float = 100_000.0,
     backtest_start: Optional[str] = None,   # "YYYY-MM-DD" — skip bars before this date
-    min_criteria: int = 6,            # minimum criteria to trigger signal (5 or 6)
+    min_criteria: int = 8,            # minimum criteria to trigger signal (1–8)
+    high_lookback: int = 126,         # C4 lookback in trading bars (63=3m, 126=6m, 189=9m, 252=1yr)
     rank_by: str = "REL_VOL",         # "REL_VOL" | "RS_20" | "RS_63" | "RS_126" | "RS_VOL"
     pit_initial: Optional[set[str]] = None,     # point-in-time: tickers at start date
     pit_changes: Optional[list[dict]] = None,   # point-in-time: [{date, added, removed}, ...] sorted ascending
@@ -102,7 +103,9 @@ def run_daniels_portfolio_backtest(
     ----------
     stock_dfs  : {ticker: OHLCV DataFrame} — the universe to screen
     spy_df     : SPY OHLCV DataFrame for buy-and-hold benchmark
-    exit_mode  : "SMA50" | "ATR_TRAIL" | "PCT_TRAIL" | "BOTH"
+    exit_mode  : "SMA50" | "ATR_TRAIL" | "PCT_TRAIL" | "BOTH" | "REBALANCE"
+                 "REBALANCE" disables all intra-bar stops; positions exit only
+                 on rebalance dates (if not still in top-N) or at end of backtest.
     trail_pct  : percentage drawdown from peak to trigger PCT_TRAIL exit
     atr_multiplier : multiplier for ATR trailing stop
     max_positions  : maximum concurrent open positions
@@ -114,7 +117,7 @@ def run_daniels_portfolio_backtest(
     if not stock_dfs:
         return None
 
-    WARMUP = 130   # bars needed for EMA100 + 6m-high + vol history
+    WARMUP = 210   # bars needed for EMA200 + 6m-high + vol history
 
     # ── 0. Precompute benchmark ROC lookup {date: roc_N} ─────────────────── #
     bm_roc: dict[str, dict] = {}   # date → {"r20": float, "r63": float, "r126": float}
@@ -148,11 +151,13 @@ def run_daniels_portfolio_backtest(
         ema21  = close_s.ewm(span=21,  adjust=False).mean().values
         ema50  = close_s.ewm(span=50,  adjust=False).mean().values
         ema100 = close_s.ewm(span=100, adjust=False).mean().values
+        ema150 = close_s.ewm(span=150, adjust=False).mean().values
+        ema200 = close_s.ewm(span=200, adjust=False).mean().values
         sma50  = close_s.rolling(50).mean().values
         atr20  = _atr(df, 20)
         volume = vol_s.values
 
-        high_6m     = close_s.shift(1).rolling(126).max().values
+        high_6m     = close_s.shift(1).rolling(high_lookback).max().values
         avg_vol_30d = vol_s.shift(1).rolling(30).mean().values
         avg_vol_10d = vol_s.shift(1).rolling(10).mean().values
 
@@ -165,7 +170,10 @@ def run_daniels_portfolio_backtest(
         c4 = np.where(np.isnan(high_6m),   False, close >= high_6m)
         c5 = rel_vol >= 1.5
         c6 = np.where(np.isnan(avg_vol_10d), False, avg_vol_10d >= 1_000_000)
-        criteria_met = c1.astype(int) + c2.astype(int) + c3.astype(int) + c4.astype(int) + c5.astype(int) + c6.astype(int)
+        c7 = ema100 >= ema150
+        c8 = ema150 >= ema200
+        criteria_met = (c1.astype(int) + c2.astype(int) + c3.astype(int) + c4.astype(int)
+                        + c5.astype(int) + c6.astype(int) + c7.astype(int) + c8.astype(int))
         signal = criteria_met >= min_criteria
 
         date_to_idx = {d: i for i, d in enumerate(dates)}

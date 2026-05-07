@@ -4,8 +4,8 @@ import CandlestickChart from "../components/CandlestickChart";
 import EquityChart from "../components/EquityChart";
 import { exportCsv, today } from "../utils/exportCsv";
 
-const DANIELS_FIELDS = ["ticker","name","criteria_met","passes","last_close","ema21","ema50","ema100","high_6m","rel_volume","avg_vol_10d","c1","c2","c3","c4","c5","c6","price_change_pct","rel_vol","today_vol","market_cap","eps","sector","analyst_rating"];
-const DANIELS_HEADERS = { ticker:"Ticker", name:"Name", criteria_met:"Criteria Met", passes:"Passes", last_close:"Close", ema21:"EMA21", ema50:"EMA50", ema100:"EMA100", high_6m:"6m High", rel_volume:"Rel Vol (Signal)", avg_vol_10d:"Avg Vol 10d", c1:"C1", c2:"C2", c3:"C3", c4:"C4", c5:"C5", c6:"C6", price_change_pct:"Chg %", rel_vol:"Rel Vol 30d", today_vol:"Volume", market_cap:"Mkt Cap", eps:"EPS", sector:"Sector", analyst_rating:"Rating" };
+const DANIELS_FIELDS = ["ticker","name","criteria_met","passes","last_close","ema21","ema50","ema100","ema150","ema200","high_6m","rel_volume","avg_vol_10d","c1","c2","c3","c4","c5","c6","price_change_pct","rel_vol","today_vol","market_cap","eps","sector","analyst_rating"];
+const DANIELS_HEADERS = { ticker:"Ticker", name:"Name", criteria_met:"Criteria Met", passes:"Passes", last_close:"Close", ema21:"EMA21", ema50:"EMA50", ema100:"EMA100", ema150:"EMA150", ema200:"EMA200", high_6m:"6m High", rel_volume:"Rel Vol (Signal)", avg_vol_10d:"Avg Vol 10d", c1:"C1", c2:"C2", c3:"C3", c4:"C4", c5:"C5", c6:"C6", price_change_pct:"Chg %", rel_vol:"Rel Vol 30d", today_vol:"Volume", market_cap:"Mkt Cap", eps:"EPS", sector:"Sector", analyst_rating:"Rating" };
 import {
   fmtVol, fmtMarketCap,
   TickerCell, PriceChangePct, RelVolBadge, AnalystBadge,
@@ -123,7 +123,7 @@ export default function DanielsBreakoutScreener() {
 
   // Screen state
   const [universe, setUniverse] = useState("sp500");
-  const [minCriteria, setMinCriteria] = useState(5);
+  const [minCriteria, setMinCriteria] = useState(6);
   const [maxTickers, setMaxTickers] = useState(3000);
   const [minRelVol, setMinRelVol] = useState(1.5);
   const [minAvgVol, setMinAvgVol] = useState(1000000);
@@ -143,7 +143,7 @@ export default function DanielsBreakoutScreener() {
   const [pfStartDate, setPfStartDate] = useState("2016-01-04");
   const [pfEndDate, setPfEndDate] = useState("");
   const [pfRankBy, setPfRankBy] = useState("RS_20");
-  const [pfTradeFilter, setPfTradeFilter] = useState({ ticker: "", exitReason: "ALL", result: "ALL", entryFrom: "", entryTo: "", exitFrom: "", exitTo: "" });
+  const [pfTradeFilter, setPfTradeFilter] = useState({ ticker: "", exitReason: "ALL", result: "ALL", year: "ALL", entryFrom: "", entryTo: "", exitFrom: "", exitTo: "" });
   const [pfExitMode, setPfExitMode] = useState("BOTH");
   const [pfTrailPct, setPfTrailPct] = useState(10);
   const [pfMaxPos, setPfMaxPos] = useState(10);
@@ -458,7 +458,7 @@ export default function DanielsBreakoutScreener() {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
-                      {["Ticker", "Chg %", "Rel Vol", "Vol", "Mkt Cap", "EPS", "Sector", "Rating", "Met", "Close", "EMA21", "EMA50", "EMA100", "6m High", "Avg Vol 10d"].map(h => (
+                      {["Ticker", "Chg %", "Rel Vol", "Vol", "Mkt Cap", "EPS", "Sector", "Rating", "Met", "Close", "EMA21", "EMA50", "EMA100", "EMA150", "EMA200", "6m High", "Avg Vol 10d"].map(h => (
                         <th key={h} style={th}>{h}</th>
                       ))}
                     </tr>
@@ -485,6 +485,8 @@ export default function DanielsBreakoutScreener() {
                         <td style={{ ...td, color: r.c1 ? "#56d364" : "#8b949e" }}>${r.ema21.toFixed(2)}</td>
                         <td style={{ ...td, color: r.c2 ? "#56d364" : "#8b949e" }}>${r.ema50.toFixed(2)}</td>
                         <td style={{ ...td, color: r.c3 ? "#56d364" : "#8b949e" }}>${r.ema100.toFixed(2)}</td>
+                        <td style={{ ...td, color: "#8b949e" }}>${r.ema150?.toFixed(2) ?? "—"}</td>
+                        <td style={{ ...td, color: "#8b949e" }}>${r.ema200?.toFixed(2) ?? "—"}</td>
                         <td style={{ ...td, color: r.c4 ? "#56d364" : "#e3b341" }}>${r.high_6m.toFixed(2)}</td>
                         <td style={{ ...td, color: r.c6 ? "#56d364" : "#f85149", fontSize: 12 }}>{fmtVol(r.avg_vol_10d)}</td>
                       </tr>
@@ -853,11 +855,13 @@ export default function DanielsBreakoutScreener() {
                 <p style={{ color: "#8b949e", fontSize: 13 }}>No trades triggered in this period.</p>
               ) : (() => {
                 const exitReasons = ["ALL", ...Array.from(new Set(pfData.trades.map(t => t.exit_reason))).sort()];
+                const years = ["ALL", ...Array.from(new Set(pfData.trades.map(t => t.entry_date.slice(0, 4)))).sort()];
                 const filtered = pfData.trades.filter(t => {
                   if (pfTradeFilter.ticker && !t.ticker.toLowerCase().includes(pfTradeFilter.ticker.toLowerCase())) return false;
                   if (pfTradeFilter.exitReason !== "ALL" && t.exit_reason !== pfTradeFilter.exitReason) return false;
                   if (pfTradeFilter.result === "WIN"  && t.pnl_pct <= 0) return false;
                   if (pfTradeFilter.result === "LOSS" && t.pnl_pct >= 0) return false;
+                  if (pfTradeFilter.year !== "ALL" && !t.entry_date.startsWith(pfTradeFilter.year)) return false;
                   if (pfTradeFilter.entryFrom && t.entry_date < pfTradeFilter.entryFrom) return false;
                   if (pfTradeFilter.entryTo   && t.entry_date > pfTradeFilter.entryTo)   return false;
                   if (pfTradeFilter.exitFrom  && t.exit_date  < pfTradeFilter.exitFrom)  return false;
@@ -886,6 +890,9 @@ export default function DanielsBreakoutScreener() {
                       <option value="WIN">Winners only</option>
                       <option value="LOSS">Losers only</option>
                     </select>
+                    <select value={pfTradeFilter.year} onChange={e => setPfTradeFilter(f => ({ ...f, year: e.target.value }))} style={{ ...selectStyle, fontSize: 12, padding: "3px 8px" }}>
+                      {years.map(y => <option key={y} value={y}>{y === "ALL" ? "All years" : y}</option>)}
+                    </select>
                     <span style={{ fontSize: 11, color: "#8b949e" }}>Entry:</span>
                     <input type="date" value={pfTradeFilter.entryFrom} onChange={e => setPfTradeFilter(f => ({ ...f, entryFrom: e.target.value }))} style={{ ...selectStyle, fontSize: 12, padding: "3px 8px" }} />
                     <span style={{ fontSize: 11, color: "#8b949e" }}>–</span>
@@ -894,8 +901,8 @@ export default function DanielsBreakoutScreener() {
                     <input type="date" value={pfTradeFilter.exitFrom} onChange={e => setPfTradeFilter(f => ({ ...f, exitFrom: e.target.value }))} style={{ ...selectStyle, fontSize: 12, padding: "3px 8px" }} />
                     <span style={{ fontSize: 11, color: "#8b949e" }}>–</span>
                     <input type="date" value={pfTradeFilter.exitTo} onChange={e => setPfTradeFilter(f => ({ ...f, exitTo: e.target.value }))} style={{ ...selectStyle, fontSize: 12, padding: "3px 8px" }} />
-                    {(pfTradeFilter.ticker || pfTradeFilter.exitReason !== "ALL" || pfTradeFilter.result !== "ALL" || pfTradeFilter.entryFrom || pfTradeFilter.entryTo || pfTradeFilter.exitFrom || pfTradeFilter.exitTo) && (
-                      <button onClick={() => setPfTradeFilter({ ticker: "", exitReason: "ALL", result: "ALL", entryFrom: "", entryTo: "", exitFrom: "", exitTo: "" })}
+                    {(pfTradeFilter.ticker || pfTradeFilter.exitReason !== "ALL" || pfTradeFilter.result !== "ALL" || pfTradeFilter.year !== "ALL" || pfTradeFilter.entryFrom || pfTradeFilter.entryTo || pfTradeFilter.exitFrom || pfTradeFilter.exitTo) && (
+                      <button onClick={() => setPfTradeFilter({ ticker: "", exitReason: "ALL", result: "ALL", year: "ALL", entryFrom: "", entryTo: "", exitFrom: "", exitTo: "" })}
                         style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, border: "1px solid #30363d", background: "transparent", color: "#8b949e", cursor: "pointer" }}>
                         Clear
                       </button>

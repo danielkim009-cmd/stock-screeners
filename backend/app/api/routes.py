@@ -99,6 +99,8 @@ class DanielsResult(_MetaMixin):
     ema21: float
     ema50: float
     ema100: float
+    ema150: float
+    ema200: float
     high_6m: float
     rel_volume: float
     avg_vol_10d: float
@@ -441,10 +443,10 @@ def screen_daniels_strategy(
     """
     Run Daniel's Breakout screen: EMA stack + volume surge + new N-day high.
 
-    Requires ~200 calendar days of price history for EMA100 and 6-month high.
+    Requires ~350 calendar days of price history for EMA200 and 6-month high.
     """
     tickers = fetch_tickers(universe)[:max_tickers]
-    data    = fetch_bulk_ohlcv(tickers, period_days=200)
+    data    = fetch_bulk_ohlcv(tickers, period_days=350)
 
     # Pass 1: screen + collect raw (sig, df) pairs
     raw: list[tuple] = []
@@ -473,6 +475,8 @@ def screen_daniels_strategy(
             ema21=sig.ema21,
             ema50=sig.ema50,
             ema100=sig.ema100,
+            ema150=sig.ema150,
+            ema200=sig.ema200,
             high_6m=sig.high_6m,
             rel_volume=sig.rel_volume,
             avg_vol_10d=sig.avg_vol_10d,
