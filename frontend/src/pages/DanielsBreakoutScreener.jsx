@@ -4,8 +4,8 @@ import CandlestickChart from "../components/CandlestickChart";
 import EquityChart from "../components/EquityChart";
 import { exportCsv, today } from "../utils/exportCsv";
 
-const DANIELS_FIELDS = ["ticker","name","criteria_met","passes","last_close","ema21","ema50","ema100","ema200","high_6m","rel_volume","avg_vol_10d","c1","c2","c3","c4","c5","c6","price_change_pct","rel_vol","today_vol","market_cap","eps","sector","analyst_rating"];
-const DANIELS_HEADERS = { ticker:"Ticker", name:"Name", criteria_met:"Criteria Met", passes:"Passes", last_close:"Close", ema21:"EMA21", ema50:"EMA50", ema100:"EMA100", ema200:"EMA200", high_6m:"6m High", rel_volume:"Rel Vol (Signal)", avg_vol_10d:"Avg Vol 10d", c1:"C1", c2:"C2", c3:"C3", c4:"C4", c5:"C5", c6:"C6", price_change_pct:"Chg %", rel_vol:"Rel Vol 30d", today_vol:"Volume", market_cap:"Mkt Cap", eps:"EPS", sector:"Sector", analyst_rating:"Rating" };
+const DANIELS_FIELDS = ["ticker","name","criteria_met","passes","last_close","ema21","ema50","ema100","ema150","ema200","high_6m","rel_volume","avg_vol_10d","c1","c2","c3","c4","c5","c6","price_change_pct","rel_vol","today_vol","market_cap","eps","sector","analyst_rating"];
+const DANIELS_HEADERS = { ticker:"Ticker", name:"Name", criteria_met:"Criteria Met", passes:"Passes", last_close:"Close", ema21:"EMA21", ema50:"EMA50", ema100:"EMA100", ema150:"EMA150", ema200:"EMA200", high_6m:"6m High", rel_volume:"Rel Vol (Signal)", avg_vol_10d:"Avg Vol 10d", c1:"C1", c2:"C2", c3:"C3", c4:"C4", c5:"C5", c6:"C6", price_change_pct:"Chg %", rel_vol:"Rel Vol 30d", today_vol:"Volume", market_cap:"Mkt Cap", eps:"EPS", sector:"Sector", analyst_rating:"Rating" };
 import {
   fmtVol, fmtMarketCap,
   TickerCell, PriceChangePct, RelVolBadge, AnalystBadge,
@@ -458,7 +458,7 @@ export default function DanielsBreakoutScreener() {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
-                      {["Ticker", "Chg %", "Rel Vol", "Vol", "Mkt Cap", "EPS", "Sector", "Rating", "Met", "Close", "EMA21", "EMA50", "EMA100", "EMA200", "6m High", "Avg Vol 10d"].map(h => (
+                      {["Ticker", "Chg %", "Rel Vol", "Vol", "Mkt Cap", "EPS", "Sector", "Rating", "Met", "Close", "EMA21", "EMA50", "EMA100", "EMA150", "EMA200", "6m High", "Avg Vol 10d"].map(h => (
                         <th key={h} style={th}>{h}</th>
                       ))}
                     </tr>
@@ -485,6 +485,7 @@ export default function DanielsBreakoutScreener() {
                         <td style={{ ...td, color: r.c1 ? "#56d364" : "#8b949e" }}>${r.ema21.toFixed(2)}</td>
                         <td style={{ ...td, color: r.c2 ? "#56d364" : "#8b949e" }}>${r.ema50.toFixed(2)}</td>
                         <td style={{ ...td, color: r.c3 ? "#56d364" : "#8b949e" }}>${r.ema100.toFixed(2)}</td>
+                        <td style={{ ...td, color: "#8b949e" }}>${r.ema150?.toFixed(2) ?? "—"}</td>
                         <td style={{ ...td, color: "#8b949e" }}>${r.ema200?.toFixed(2) ?? "—"}</td>
                         <td style={{ ...td, color: r.c4 ? "#56d364" : "#e3b341" }}>${r.high_6m.toFixed(2)}</td>
                         <td style={{ ...td, color: r.c6 ? "#56d364" : "#f85149", fontSize: 12 }}>{fmtVol(r.avg_vol_10d)}</td>

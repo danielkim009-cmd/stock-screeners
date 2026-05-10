@@ -99,6 +99,7 @@ class DanielsResult(_MetaMixin):
     ema21: float
     ema50: float
     ema100: float
+    ema150: float
     ema200: float
     high_6m: float
     rel_volume: float
@@ -474,6 +475,7 @@ def screen_daniels_strategy(
             ema21=sig.ema21,
             ema50=sig.ema50,
             ema100=sig.ema100,
+            ema150=sig.ema150,
             ema200=sig.ema200,
             high_6m=sig.high_6m,
             rel_volume=sig.rel_volume,
