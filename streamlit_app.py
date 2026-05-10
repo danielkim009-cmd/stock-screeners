@@ -516,7 +516,6 @@ if page == "Daniel's Breakout":
                         "EMA21":     round(sig.ema21, 2),
                         "EMA50":     round(sig.ema50, 2),
                         "EMA100":    round(sig.ema100, 2),
-                        "EMA150":    round(sig.ema150, 2),
                         "EMA200":    round(sig.ema200, 2),
                         "6m High":   round(sig.high_6m, 2),
                         "C1": "✓" if sig.c1 else "✗",

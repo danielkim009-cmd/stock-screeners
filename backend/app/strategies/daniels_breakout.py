@@ -11,8 +11,8 @@ Criteria:
   C5: Today's volume ≥ 1.5× 30-day average volume (relative volume surge)
   C6: 10-day average volume ≥ 1,000,000 shares (liquidity)
 
-Additional EMAs computed (informational):
-  EMA150, EMA200
+Additional EMA computed (informational):
+  EMA200
 
 Results sorted by relative volume descending (highest surge first).
 """
@@ -31,7 +31,6 @@ class DanielsBreakoutSignal:
     ema21: float
     ema50: float
     ema100: float
-    ema150: float
     ema200: float
     high_6m: float        # highest close in prior 125 trading days
     rel_volume: float     # today's vol ÷ 30-day avg vol
@@ -73,14 +72,12 @@ def screen_daniels_breakout(
     ema21  = close.ewm(span=21,  adjust=False).mean()
     ema50  = close.ewm(span=50,  adjust=False).mean()
     ema100 = close.ewm(span=100, adjust=False).mean()
-    ema150 = close.ewm(span=150, adjust=False).mean()
     ema200 = close.ewm(span=200, adjust=False).mean()
 
     last_close  = float(close.iloc[-1])
     last_ema21  = float(ema21.iloc[-1])
     last_ema50  = float(ema50.iloc[-1])
     last_ema100 = float(ema100.iloc[-1])
-    last_ema150 = float(ema150.iloc[-1])
     last_ema200 = float(ema200.iloc[-1])
 
     # New high: highest close in the `high_lookback` bars BEFORE today
@@ -109,7 +106,6 @@ def screen_daniels_breakout(
         ema21=round(last_ema21, 2),
         ema50=round(last_ema50, 2),
         ema100=round(last_ema100, 2),
-        ema150=round(last_ema150, 2),
         ema200=round(last_ema200, 2),
         high_6m=round(high_6m, 2),
         rel_volume=rel_volume,

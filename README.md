@@ -11,7 +11,7 @@ A multi-strategy stock screening and backtesting app. Available in two flavours 
 
 | Strategy | Description |
 |---|---|
-| **Daniel's Breakout** | EMA momentum stack (21/50/100) + volume-confirmed breakout to a new high. EMA150 and EMA200 are displayed on charts as informational overlays. Includes single-ticker and portfolio backtesting. |
+| **Daniel's Breakout** | EMA momentum stack (21/50/100) + volume-confirmed breakout to a new high. EMA200 is displayed on charts as an informational overlay. Includes single-ticker and portfolio backtesting. |
 | **Turtle Trading** | Classic Donchian channel breakout system (20-day S1, 55-day S2) with ATR(20) trailing stop. |
 | **Minervini SEPA** | Stan Minervini's 8-criteria Specific Entry Point Analysis trend template with RS rating vs universe. |
 
@@ -26,7 +26,7 @@ A multi-strategy stock screening and backtesting app. Available in two flavours 
 | C5 | Rel Vol ≥ 1.5× | Today's volume at least 1.5× the 30-day average |
 | C6 | Avg Vol ≥ 1M | 10-day average volume ≥ 1,000,000 shares |
 
-> EMA150 and EMA200 are computed and shown on charts for visual reference but are not part of the pass/fail criteria.
+> EMA200 is computed and shown on charts for visual reference but is not part of the pass/fail criteria.
 
 ## Portfolio Backtester (Daniel's Breakout)
 

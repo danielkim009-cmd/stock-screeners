@@ -151,7 +151,6 @@ def run_daniels_portfolio_backtest(
         ema21  = close_s.ewm(span=21,  adjust=False).mean().values
         ema50  = close_s.ewm(span=50,  adjust=False).mean().values
         ema100 = close_s.ewm(span=100, adjust=False).mean().values
-        ema150 = close_s.ewm(span=150, adjust=False).mean().values
         ema200 = close_s.ewm(span=200, adjust=False).mean().values
         sma50  = close_s.rolling(50).mean().values
         atr20  = _atr(df, 20)
@@ -170,10 +169,8 @@ def run_daniels_portfolio_backtest(
         c4 = np.where(np.isnan(high_6m),   False, close >= high_6m)
         c5 = rel_vol >= 1.5
         c6 = np.where(np.isnan(avg_vol_10d), False, avg_vol_10d >= 1_000_000)
-        c7 = ema100 >= ema150
-        c8 = ema150 >= ema200
         criteria_met = (c1.astype(int) + c2.astype(int) + c3.astype(int) + c4.astype(int)
-                        + c5.astype(int) + c6.astype(int) + c7.astype(int) + c8.astype(int))
+                        + c5.astype(int) + c6.astype(int))
         signal = criteria_met >= min_criteria
 
         date_to_idx = {d: i for i, d in enumerate(dates)}
