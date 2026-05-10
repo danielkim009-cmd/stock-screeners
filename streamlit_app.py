@@ -596,6 +596,8 @@ if page == "Daniel's Breakout":
 - **C4** Price at new 6-month high
 - **C5** Today's volume ≥ 1.5× 30-day avg
 - **C6** 10-day avg volume ≥ 500K shares
+- **C7** 100-day EMA ≥ 150-day EMA
+- **C8** 150-day EMA ≥ 200-day EMA
 """)
             with e2:
                 st.markdown("""
@@ -652,7 +654,7 @@ if page == "Daniel's Breakout":
             pf_trail   = st.number_input("Trail %",    1.0, 50.0, float(rec["trail"]), 0.5, key="pf_trail")
         with col2:
             pf_maxpos  = st.number_input("Max Positions", 1, 50, rec["pos"], 1, key="pf_maxpos")
-            pf_min_crit = st.number_input("Min Criteria (of 6)", 5, 6, 6, 1, key="pf_min_crit")
+            pf_min_crit = st.selectbox("Min Criteria (of 8)", list(range(1, 9)), index=5, key="pf_min_crit")
             _LOOKBACK_OPTIONS = [63, 126, 189, 252]
             pf_high_lookback = st.selectbox(
                 "C4 — High Lookback",
@@ -925,6 +927,15 @@ if page == "Daniel's Breakout":
                         "P&L %":       round(t.pnl_pct, 2),
                         "Days Held":   t.days_held,
                         "Exit Reason": t.exit_reason,
+                        "C1":  "✓" if t.c1 else "✗",
+                        "C2":  "✓" if t.c2 else "✗",
+                        "C3":  "✓" if t.c3 else "✗",
+                        "C4":  "✓" if t.c4 else "✗",
+                        "C5":  "✓" if t.c5 else "✗",
+                        "C6":  "✓" if t.c6 else "✗",
+                        "C7":  "✓" if t.c7 else "✗",
+                        "C8":  "✓" if t.c8 else "✗",
+                        "Met": sum([t.c1, t.c2, t.c3, t.c4, t.c5, t.c6, t.c7, t.c8]),
                     })
                 if trade_rows:
                     st.dataframe(style_trade_log(pd.DataFrame(trade_rows)), use_container_width=True,

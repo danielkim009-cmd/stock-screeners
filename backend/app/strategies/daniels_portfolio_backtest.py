@@ -34,6 +34,14 @@ class PortfolioTrade:
     pnl_pct:     float
     days_held:   int
     exit_reason: str
+    c1: bool = False   # Price > EMA21
+    c2: bool = False   # EMA21 ≥ EMA50
+    c3: bool = False   # EMA50 ≥ EMA100
+    c4: bool = False   # New high
+    c5: bool = False   # Volume surge
+    c6: bool = False   # Liquidity
+    c7: bool = False   # EMA100 ≥ EMA150
+    c8: bool = False   # EMA150 ≥ EMA200
 
 
 @dataclass
@@ -211,6 +219,8 @@ def run_daniels_portfolio_backtest(
             "rs_63":       rs_63,
             "rs_126":      rs_126,
             "signal":      signal,
+            "c1": c1, "c2": c2, "c3": c3, "c4": c4,
+            "c5": c5, "c6": c6, "c7": c7, "c8": c8,
             "date_to_idx": date_to_idx,
             "n":           len(dates),
         }
@@ -290,10 +300,14 @@ def run_daniels_portfolio_backtest(
             return rv * v if not np.isnan(v) else -999.0
         return rv
 
+    # ── Criteria snapshot helper ────────────────────────────────────────── #
+    def _criteria_at(pc: dict, idx: int) -> dict:
+        return {f"c{k}": bool(pc[f"c{k}"][idx]) for k in range(1, 9)}
+
     # ── 3. Portfolio walk-forward ─────────────────────────────────────────── #
     cash      = float(initial_capital)
     positions: dict[str, dict] = {}          # ticker → position info
-    pending:   list[tuple[str, float]] = []  # (ticker, score) entered next open
+    pending:   list[tuple[str, float, int]] = []  # (ticker, score, signal_idx) entered next open
     trades:    list[PortfolioTrade] = []
     equity_curve: list[dict] = []
     position_counts: list[int] = []
@@ -342,7 +356,7 @@ def run_daniels_portfolio_backtest(
                 pit_change_idx += 1
 
         # ── 3a. Enter pending positions at today's open ───────────────────── #
-        for ticker, _ in pending:
+        for ticker, _, sig_idx in pending:
             if len(positions) >= max_positions:
                 break
             if ticker in positions:
@@ -370,6 +384,7 @@ def run_daniels_portfolio_backtest(
                 "trail_high":     entry_price,
                 "position_value": alloc,
                 "entry_master_idx": di,
+                "criteria":       _criteria_at(pc, sig_idx),
             }
         pending = []
 
@@ -425,6 +440,7 @@ def run_daniels_portfolio_backtest(
                     pnl_pct=round(pnl_pct, 2),
                     days_held=days_held,
                     exit_reason=reason,
+                    **pos.get("criteria", {}),
                 ))
                 exited.append(ticker)
 
@@ -434,7 +450,7 @@ def run_daniels_portfolio_backtest(
         # ── 3b2. Rebalance: force-exit positions outside top-N signals ──────── #
         if is_rebalance_date(di, date) and positions:
             # Build full ranked signal list for today (only active tickers)
-            all_signals: list[tuple[str, float]] = []
+            all_signals: list[tuple[str, float, int]] = []
             for ticker in active_tickers:
                 pc = precomputed.get(ticker)
                 if pc is None:
@@ -443,9 +459,9 @@ def run_daniels_portfolio_backtest(
                 if idx is None or idx < WARMUP:
                     continue
                 if bool(pc["signal"][idx]):
-                    all_signals.append((ticker, rank_score(pc, idx)))
+                    all_signals.append((ticker, rank_score(pc, idx), idx))
             all_signals.sort(key=lambda x: -x[1])
-            target_set = {t for t, _ in all_signals[:max_positions]}
+            target_set = {t for t, _, _ in all_signals[:max_positions]}
 
             rebal_exited: list[str] = []
             for ticker, pos in positions.items():
@@ -472,6 +488,7 @@ def run_daniels_portfolio_backtest(
                     pnl_pct=round(pnl_pct, 2),
                     days_held=di - pos["entry_master_idx"],
                     exit_reason="REBALANCE",
+                    **pos.get("criteria", {}),
                 ))
                 rebal_exited.append(ticker)
 
@@ -479,13 +496,13 @@ def run_daniels_portfolio_backtest(
                 del positions[t]
 
             # Queue the top-N signals not already held for entry tomorrow
-            new_entries = [(t, rv) for t, rv in all_signals[:max_positions * 2] if t not in positions]
+            new_entries = [(t, rv, si) for t, rv, si in all_signals[:max_positions * 2] if t not in positions]
             slots = max_positions - len(positions)
             pending = new_entries[:slots * 2]
 
         # ── 3c. Scan for new breakout signals (only active tickers) ──────── #
         if len(positions) < max_positions:
-            new_signals: list[tuple[str, float]] = []
+            new_signals: list[tuple[str, float, int]] = []
             for ticker in active_tickers:
                 if ticker in positions:
                     continue
@@ -496,7 +513,7 @@ def run_daniels_portfolio_backtest(
                 if idx is None or idx < WARMUP:
                     continue
                 if bool(pc["signal"][idx]) and idx + 1 < pc["n"]:
-                    new_signals.append((ticker, rank_score(pc, idx)))
+                    new_signals.append((ticker, rank_score(pc, idx), idx))
 
             new_signals.sort(key=lambda x: -x[1])
             slots = max_positions - len(positions)
