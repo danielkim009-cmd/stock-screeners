@@ -396,7 +396,7 @@ BENCHMARK_MAP = {
 
 RECOMMENDATIONS = {
     "S&P 500":      dict(exit="PCT_TRAIL", trail=25.0, pos=5,  rank="RS_126",  rebal="QUARTERLY", lookback=63),
-    "NASDAQ 100":   dict(exit="PCT_TRAIL", trail=24.0, pos=3,  rank="RS_126",  rebal="MONTHLY",   lookback=63),
+    "NASDAQ 100":   dict(exit="PCT_TRAIL", trail=20.0, pos=3,  rank="RS_126",  rebal="MONTHLY",   lookback=63),
     "Russell 2000": dict(exit="PCT_TRAIL", trail=25.0, pos=10, rank="REL_VOL", rebal="QUARTERLY", lookback=126),
 }
 
@@ -651,7 +651,10 @@ if page == "Daniel's Breakout":
                                        index=["PCT_TRAIL","SMA50","ATR_TRAIL","BOTH","REBALANCE"].index(rec["exit"]),
                                        key="pf_exit",
                                        help="REBALANCE: no intra-bar stops — hold until the next rebalance date (or end of backtest)")
-            pf_trail   = st.number_input("Trail %",    1.0, 50.0, float(rec["trail"]), 0.5, key="pf_trail")
+            if pf_exit == "PCT_TRAIL":
+                pf_trail = st.number_input("Trail %", 1.0, 50.0, float(rec["trail"]), 0.5, key="pf_trail")
+            else:
+                pf_trail = float(rec["trail"])  # default value, not shown
         with col2:
             pf_maxpos  = st.number_input("Max Positions", 1, 50, rec["pos"], 1, key="pf_maxpos")
             pf_min_crit = st.selectbox("Min Criteria (of 8)", list(range(1, 9)), index=5, key="pf_min_crit")
