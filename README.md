@@ -95,8 +95,6 @@ The strategy is far more effective on the NASDAQ 100 than on the S&P 500. On the
 >
 > S&P 500, max 3 stocks: [`backend/sliding_window_results_3pos.html`](https://danielkim009-cmd.github.io/stock-screeners/backend/sliding_window_results_3pos.html)
 
-> Trading education curriculum map: [`Trading_Education_Curriculum_Map.html`](https://danielkim009-cmd.github.io/stock-screeners/Trading_Education_Curriculum_Map.html).
-
 ## Tech Stack
 
 | Layer | Tech |
@@ -202,7 +200,6 @@ stock-screeners/
 │   ├── sliding_window_results_quarterly.html
 │   ├── sliding_window_results_nasdaq100.html
 │   ├── sliding_window_results_relvol.html
-├── Trading_Education_Curriculum_Map.html
 │   └── requirements.txt
 └── frontend/
     ├── src/
