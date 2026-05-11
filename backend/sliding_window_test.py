@@ -1,7 +1,7 @@
 """
 Sliding 10-year window backtest for Daniel's breakout strategy on S&P 500.
 Config: PCT_TRAIL 25%, max 3 positions, RS_20 ranking, Quarterly rebalance.
-Windows: 3/1/2006→3/1/2016, 3/1/2007→3/1/2017, ..., 3/1/2016→3/1/2026
+Windows: 1/3/2006→1/3/2016, 1/3/2007→1/3/2017, ..., 1/3/2016→1/3/2026
 Data is fetched once for the full period and sliced per window.
 """
 import sys
@@ -42,8 +42,8 @@ print(f"  Data ready for {len(raw_dfs)} tickers")
 # ── Run each window ───────────────────────────────────────────────────────────
 rows = []
 for start_year in START_YEARS:
-    t_start = pd.Timestamp(f"{start_year}-03-01")
-    t_end   = pd.Timestamp(f"{start_year + WINDOW_YEARS}-03-01")
+    t_start = pd.Timestamp(f"{start_year}-01-03")
+    t_end   = pd.Timestamp(f"{start_year + WINDOW_YEARS}-01-03")
 
     # Slice each df: keep full history up to t_end (warmup before t_start is needed)
     def _trim(df):

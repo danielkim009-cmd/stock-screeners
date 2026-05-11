@@ -1,9 +1,9 @@
 """
-Sliding 10-year window backtest — Daniel's Breakout on S&P 500
+Sliding 10-year window backtest — Daniel's Breakout on NASDAQ 100
 Config: Streamlit recommended settings
-  PCT_TRAIL 25%, 5 positions, RS_126 ranking, Quarterly rebalance, C4 lookback 63 bars
+  PCT_TRAIL 20%, 3 positions, RS_126 ranking, Monthly rebalance, C4 lookback 63 bars
 
-Uses point-in-time S&P 500 composition to avoid survivorship bias.
+Uses point-in-time NASDAQ 100 composition to avoid survivorship bias.
 Windows: 2006-01-03 → 2016-01-03 through 2016-01-03 → 2026-01-03
 Data fetched once for full period and sliced per window.
 """
@@ -15,20 +15,20 @@ import numpy as np
 
 sys.path.insert(0, ".")
 from app.data.market_data import fetch_bulk_ohlcv
-from app.data.sp500_history import get_sp500_pit_data
+from app.data.nasdaq100_history import get_nasdaq100_pit_data
 from app.strategies.daniels_portfolio_backtest import run_daniels_portfolio_backtest
 
-# ── Config (Streamlit recommended settings for S&P 500) ──────────────────────
+# ── Config (Streamlit recommended settings for NASDAQ 100) ─────────────────────
 EXIT_MODE      = "PCT_TRAIL"
-TRAIL_PCT      = 25.0
-MAX_POSITIONS  = 5
-REBALANCE      = "QUARTERLY"
+TRAIL_PCT      = 20.0
+MAX_POSITIONS  = 3
+REBALANCE      = "MONTHLY"
 RANK_BY        = "RS_126"
 HIGH_LOOKBACK  = 63        # C4: 3-month high lookback
 MIN_CRITERIA   = 6
 INITIAL_CAP    = 100_000.0
-UNIVERSE       = "sp500"
-BENCHMARK      = "SPY"
+UNIVERSE       = "nasdaq100"
+BENCHMARK      = "QQQ"
 WARMUP_DAYS    = 220
 
 START_YEARS = range(2006, 2017)   # 2006..2016 inclusive
@@ -40,15 +40,15 @@ WINDOW_START_MMDD = "01-03"
 FULL_START = "2006-01-01"
 FULL_END   = "2026-01-03"
 
-print("Fetching point-in-time S&P 500 composition for full range…")
-pit_initial_full, pit_all_full, pit_changes_full = get_sp500_pit_data(FULL_START, FULL_END)
+print("Fetching point-in-time NASDAQ 100 composition for full range…")
+pit_initial_full, pit_all_full, pit_changes_full = get_nasdaq100_pit_data(FULL_START, FULL_END)
 print(f"  {len(pit_initial_full)} tickers at start, {len(pit_all_full)} total across full range")
 
 fetch_days = (pd.Timestamp.today() - pd.Timestamp(FULL_START)).days + WARMUP_DAYS
 all_fetch = list(set(pit_all_full + [BENCHMARK]))
 print(f"Fetching {fetch_days} days of OHLCV for {len(all_fetch)} symbols (this takes a while)…")
 raw_dfs = fetch_bulk_ohlcv(all_fetch, period_days=fetch_days)
-spy_df_full = raw_dfs.pop(BENCHMARK, None)
+benchmark_df_full = raw_dfs.pop(BENCHMARK, None)
 print(f"  Data ready for {len(raw_dfs)} tickers")
 
 # ── Run each window ───────────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ for start_year in START_YEARS:
     # Get point-in-time composition for this window
     w_start_str = str(t_start.date())
     w_end_str   = str(t_end.date())
-    pit_initial_w, pit_all_w, pit_changes_w = get_sp500_pit_data(w_start_str, w_end_str)
+    pit_initial_w, pit_all_w, pit_changes_w = get_nasdaq100_pit_data(w_start_str, w_end_str)
 
     # Only include tickers relevant to this window
     stock_dfs = {
@@ -75,14 +75,14 @@ for start_year in START_YEARS:
         for t, df in raw_dfs.items()
         if t in set(pit_all_w) and df is not None and not df.empty
     }
-    spy_df = _trim(spy_df_full)
+    benchmark_df = _trim(benchmark_df_full)
 
     label = f"{t_start.strftime('%Y-%m-%d')} → {t_end.strftime('%Y-%m-%d')}"
     print(f"Running {label} (PIT: {len(pit_initial_w)} initial, {len(pit_all_w)} total tickers)…", end=" ", flush=True)
 
     result = run_daniels_portfolio_backtest(
         stock_dfs=stock_dfs,
-        spy_df=spy_df,
+        spy_df=benchmark_df,
         exit_mode=EXIT_MODE,
         trail_pct=TRAIL_PCT,
         max_positions=MAX_POSITIONS,
@@ -139,13 +139,13 @@ for start_year in START_YEARS:
         "avg_win":        result.avg_win_pct,
         "avg_loss":       result.avg_loss_pct,
         "n_trades":       result.n_trades,
-        "beat_spy":       beat,
+        "beat_bm":        beat,
     })
-    print(f"CAGR={result.cagr:+.1f}%  SPY={result.bh_cagr:+.1f}%  Alpha={alpha:+.1f}%  MaxDD={result.max_drawdown_pct:.1f}%")
+    print(f"CAGR={result.cagr:+.1f}%  {BENCHMARK}={result.bh_cagr:+.1f}%  Alpha={alpha:+.1f}%  MaxDD={result.max_drawdown_pct:.1f}%")
 
 # ── Print summary table ───────────────────────────────────────────────────────
 print("\n" + "="*130)
-print(f"SLIDING 10-YEAR WINDOW RESULTS — S&P 500 | PCT_TRAIL {TRAIL_PCT}% | {MAX_POSITIONS} positions | {RANK_BY} | {REBALANCE} rebalance | C4 lookback {HIGH_LOOKBACK}d")
+print(f"SLIDING 10-YEAR WINDOW RESULTS — NASDAQ 100 | PCT_TRAIL {TRAIL_PCT}% | {MAX_POSITIONS} positions | {RANK_BY} | {REBALANCE} rebalance | C4 lookback {HIGH_LOOKBACK}d")
 print("="*130)
 df_out = pd.DataFrame(rows).set_index("Window")
 with pd.option_context("display.max_columns", None, "display.width", 200):
@@ -155,10 +155,10 @@ print("="*130)
 # ── Compute summary stats for HTML ────────────────────────────────────────────
 valid = [r for r in results_detail if r is not None]
 avg_cagr       = np.mean([r["cagr"]     for r in valid]) if valid else 0
-avg_spy_cagr   = np.mean([r["bh_cagr"]  for r in valid]) if valid else 0
-beats_spy      = sum(1 for r in valid if r["beat_spy"])
+avg_bm_cagr    = np.mean([r["bh_cagr"]  for r in valid]) if valid else 0
+beats_bm       = sum(1 for r in valid if r["beat_bm"])
 avg_max_dd     = np.mean([r["max_dd"]   for r in valid]) if valid else 0
-avg_spy_dd     = np.mean([r["bh_max_dd"] for r in valid]) if valid else 0
+avg_bm_dd      = np.mean([r["bh_max_dd"] for r in valid]) if valid else 0
 avg_win_rate   = np.mean([r["win_rate"] for r in valid]) if valid else 0
 avg_sharpe     = np.mean([r["sharpe"]   for r in valid]) if valid else 0
 best_cagr      = max((r["cagr"] for r in valid), default=0)
@@ -194,7 +194,7 @@ max_cagr_abs = max((abs(r["cagr"]) for r in valid), default=1)
 for r in results_detail:
     if r is None:
         continue
-    hl = ' class="highlight"' if r["beat_spy"] else ""
+    hl = ' class="highlight"' if r["beat_bm"] else ""
     table_rows_html += f"""
     <tr{hl}>
       <td>{r["label"]}</td>
@@ -214,7 +214,7 @@ for r in results_detail:
     </tr>"""
 
 cagr_bars = ""
-spy_bars = ""
+bm_bars = ""
 max_abs = max(max(abs(r["cagr"]) for r in valid), max(abs(r["bh_cagr"]) for r in valid), 0.01) if valid else 1
 
 for r in valid:
@@ -222,14 +222,14 @@ for r in valid:
     col_s = "#56d364" if r["cagr"] >= 0 else "#f85149"
     col_b = "#58a6ff"
     cagr_bars += _bar_row(yr_lbl, r["cagr"], max_abs, col_s)
-    spy_bars  += _bar_row(yr_lbl, r["bh_cagr"], max_abs, col_b)
+    bm_bars   += _bar_row(yr_lbl, r["bh_cagr"], max_abs, col_b)
 
 html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Daniel's Breakout — S&amp;P 500 Sliding Window Backtest (Streamlit Recommended)</title>
+<title>Daniel's Breakout — NASDAQ 100 Sliding Window Backtest (Recommended)</title>
 <style>
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
   body {{ background: #0d1117; color: #e6edf3; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 32px 24px; max-width: 1280px; margin: 0 auto; }}
@@ -300,14 +300,14 @@ html = f"""<!DOCTYPE html>
 </head>
 <body>
 
-<h1>Daniel's Breakout Strategy — S&amp;P 500 Sliding 10-Year Window Backtest</h1>
-<p class="subtitle">Streamlit recommended settings with point-in-time S&amp;P 500 composition (no survivorship bias). Each window runs for exactly 10 years, starting the first trading day (Jan 3) of the given year. Walk-forward, no look-ahead bias. Initial capital $100,000. Highlighted rows = strategy beat SPY.</p>
+<h1>Daniel's Breakout Strategy — NASDAQ 100 Sliding 10-Year Window Backtest</h1>
+<p class="subtitle">Recommended settings with point-in-time NASDAQ 100 composition (no survivorship bias). Each window runs for exactly 10 years, starting the first trading day (Jan 3) of the given year. Walk-forward, no look-ahead bias. Initial capital $100,000. Highlighted rows = strategy beat {BENCHMARK}.</p>
 
 <div class="config-bar">
-  <div class="chip"><span>Universe </span>S&amp;P 500 (~500 stocks)</div>
+  <div class="chip"><span>Universe </span>NASDAQ 100 (~100 stocks)</div>
   <div class="chip"><span>Exit </span>PCT Trailing Stop {TRAIL_PCT:.0f}%</div>
   <div class="chip"><span>Max Positions </span>{MAX_POSITIONS}</div>
-  <div class="chip"><span>Rank By </span>{RANK_BY.replace("RS_", "Rel Strength ").replace("126", "126d vs SPY")}</div>
+  <div class="chip"><span>Rank By </span>{RANK_BY.replace("RS_", "Rel Strength ").replace("126", "126d vs QQQ")}</div>
   <div class="chip"><span>Rebalance </span>{REBALANCE.title()}</div>
   <div class="chip"><span>C4 Lookback </span>{HIGH_LOOKBACK}d (3 months)</div>
   <div class="chip"><span>Min Criteria </span>{MIN_CRITERIA}/8</div>
@@ -321,20 +321,20 @@ html = f"""<!DOCTYPE html>
     <div class="card-value {'green' if avg_cagr >= 0 else 'red'}">{avg_cagr:+.1f}%</div>
   </div>
   <div class="card">
-    <div class="card-label">Avg CAGR (SPY)</div>
-    <div class="card-value blue">{avg_spy_cagr:+.1f}%</div>
+    <div class="card-label">Avg CAGR ({BENCHMARK})</div>
+    <div class="card-value blue">{avg_bm_cagr:+.1f}%</div>
   </div>
   <div class="card">
-    <div class="card-label">Strategy Beat SPY</div>
-    <div class="card-value amber">{beats_spy} / {len(valid)}</div>
+    <div class="card-label">Strategy Beat {BENCHMARK}</div>
+    <div class="card-value amber">{beats_bm} / {len(valid)}</div>
   </div>
   <div class="card">
     <div class="card-label">Avg Max Drawdown</div>
     <div class="card-value red">{avg_max_dd:.1f}%</div>
   </div>
   <div class="card">
-    <div class="card-label">Avg SPY Max DD</div>
-    <div class="card-value red">{avg_spy_dd:.1f}%</div>
+    <div class="card-label">Avg {BENCHMARK} Max DD</div>
+    <div class="card-value red">{avg_bm_dd:.1f}%</div>
   </div>
   <div class="card">
     <div class="card-label">Avg Win Rate</div>
@@ -358,11 +358,11 @@ html = f"""<!DOCTYPE html>
       <th style="text-align:left">Window (10 years)</th>
       <th>Total Return</th>
       <th>CAGR</th>
-      <th>SPY Return</th>
-      <th>SPY CAGR</th>
+      <th>{BENCHMARK} Return</th>
+      <th>{BENCHMARK} CAGR</th>
       <th>Alpha</th>
       <th>Max DD</th>
-      <th>SPY Max DD</th>
+      <th>{BENCHMARK} Max DD</th>
       <th>Final $</th>
       <th>Sharpe</th>
       <th>Win Rate</th>
@@ -384,8 +384,8 @@ html = f"""<!DOCTYPE html>
     {cagr_bars}
   </div>
   <div class="bar-chart">
-    <div class="bar-chart-title">SPY CAGR per window</div>
-    {spy_bars}
+    <div class="bar-chart-title">{BENCHMARK} CAGR per window</div>
+    {bm_bars}
   </div>
 </div>
 
@@ -402,10 +402,10 @@ html = f"""<!DOCTYPE html>
   <div class="obs-card obs-blue">
     <h3>Configuration</h3>
     <ul>
-      <li>Streamlit recommended settings for S&amp;P 500</li>
-      <li>Quarterly rebalance keeps portfolio fresh</li>
-      <li>RS_126 ranks by 6-month relative strength vs SPY</li>
-      <li>5 equal-weight positions, 25% trailing stop</li>
+      <li>Recommended settings for NASDAQ 100</li>
+      <li>Monthly rebalance keeps portfolio fresh</li>
+      <li>RS_126 ranks by 6-month relative strength vs {BENCHMARK}</li>
+      <li>3 equal-weight positions, 20% trailing stop</li>
     </ul>
   </div>
   <div class="obs-card obs-amber">
@@ -420,15 +420,15 @@ html = f"""<!DOCTYPE html>
 </div>
 
 <div class="footer">
-  Generated by Daniel's Breakout Portfolio Backtester &nbsp;·&nbsp;
-  Universe: S&amp;P 500 &nbsp;·&nbsp;
+  Generated by Daniel's Breakout Portfolio Backtester &nbsp;&middot;&nbsp;
+  Universe: NASDAQ 100 &nbsp;&middot;&nbsp;
   Config: PCT_TRAIL {TRAIL_PCT:.0f}% / {MAX_POSITIONS} positions / {RANK_BY} / {REBALANCE} / C4={HIGH_LOOKBACK}d / min_criteria={MIN_CRITERIA}
 </div>
 
 </body>
 </html>"""
 
-out_path = os.path.join(os.path.dirname(__file__), "sliding_window_streamlit_recommended_pit.html")
+out_path = os.path.join(os.path.dirname(__file__), "sliding_window_nasdaq100_recommended_pit.html")
 with open(out_path, "w") as f:
     f.write(html)
 
