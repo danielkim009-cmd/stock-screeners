@@ -430,7 +430,7 @@ if page == "Daniel's Breakout":
     # ── Screener ─────────────────────────────────────────────────────────────
     with tab_screen:
         with st.expander("📋 Screening Criteria", expanded=True):
-            c1, c2 = st.columns(2)
+            c1, c2, c3 = st.columns(3)
             with c1:
                 st.markdown("""
 **EMA Momentum Stack**
@@ -445,13 +445,19 @@ if page == "Daniel's Breakout":
 - **C5** Today's volume ≥ N× 30-day average (adjustable)
 - **C6** 10-day average volume ≥ N shares (adjustable)
 """)
+            with c3:
+                st.markdown("""
+**Long-Term Trend**
+- **C7** 100-day EMA ≥ 150-day EMA
+- **C8** 150-day EMA ≥ 200-day EMA
+""")
 
         col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
         with col1:
             d_uni_lbl = st.selectbox("Universe", list(UNIVERSE_OPTIONS), key="d_uni")
             d_uni = UNIVERSE_OPTIONS[d_uni_lbl]
         with col2:
-            d_min = st.selectbox("Min Criteria", [5, 6, 4, 3, 2, 1], index=0, key="d_min")
+            d_min = st.selectbox("Min Criteria (of 8)", list(range(1, 9)), index=6, key="d_min")
         with col3:
             if "d_max" not in st.session_state or st.session_state.get("_d_uni_prev") != d_uni:
                 st.session_state["d_max"] = UNIVERSE_MAX.get(d_uni, 500)
@@ -525,6 +531,8 @@ if page == "Daniel's Breakout":
                         "C4": "✓" if sig.c4 else "✗",
                         "C5": "✓" if sig.c5 else "✗",
                         "C6": "✓" if sig.c6 else "✗",
+                        "C7": "✓" if sig.c7 else "✗",
+                        "C8": "✓" if sig.c8 else "✗",
                         "Mkt Cap": float(m["market_cap"]) if m.get("market_cap") else 0.0,
                         "Sector":    m.get("sector", ""),
                         "Rating":    m.get("analyst_rating", ""),
@@ -538,7 +546,7 @@ if page == "Daniel's Breakout":
             passes = sum(1 for r in rows if r["Passes"] == "✓")
             if not rows:
                 st.warning(
-                    f"No stocks met ≥ {d_min}/6 criteria. "
+                    f"No stocks met ≥ {d_min}/8 criteria. "
                     "Try lowering **Min Criteria** — in a broad market downturn "
                     "C4 (new 6-month high) often fails across the board."
                 )
@@ -657,7 +665,7 @@ if page == "Daniel's Breakout":
                 pf_trail = float(rec["trail"])  # default value, not shown
         with col2:
             pf_maxpos  = st.number_input("Max Positions", 1, 50, rec["pos"], 1, key="pf_maxpos")
-            pf_min_crit = st.selectbox("Min Criteria (of 8)", list(range(1, 9)), index=5, key="pf_min_crit")
+            pf_min_crit = st.selectbox("Min Criteria (of 8)", list(range(1, 9)), index=6, key="pf_min_crit")
             _LOOKBACK_OPTIONS = [63, 126, 189, 252]
             pf_high_lookback = st.selectbox(
                 "C4 — High Lookback",

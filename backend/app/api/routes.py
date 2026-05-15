@@ -110,6 +110,8 @@ class DanielsResult(_MetaMixin):
     c4: bool
     c5: bool
     c6: bool
+    c7: bool
+    c8: bool
     criteria_met: int
     passes: bool
 
@@ -412,10 +414,10 @@ def screen_daniels_strategy(
         description="Universe: sp500 | nasdaq100 | russell2000 | russell3000",
     ),
     min_criteria: int = Query(
-        default=6,
+        default=7,
         ge=1,
-        le=6,
-        description="Minimum number of criteria that must be met (1–6). 6 = strict pass.",
+        le=8,
+        description="Minimum number of criteria that must be met (1–8). 8 = strict pass.",
     ),
     max_tickers: int = Query(
         default=200,
@@ -482,6 +484,7 @@ def screen_daniels_strategy(
             avg_vol_10d=sig.avg_vol_10d,
             c1=sig.c1, c2=sig.c2, c3=sig.c3,
             c4=sig.c4, c5=sig.c5, c6=sig.c6,
+            c7=sig.c7, c8=sig.c8,
             criteria_met=sig.criteria_met,
             passes=sig.passes,
             name=m.get("name"),

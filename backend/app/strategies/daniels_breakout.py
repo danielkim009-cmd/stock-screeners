@@ -10,9 +10,8 @@ Criteria:
   C4: Price at or above new 6-month high (highest close in prior 125 trading days)
   C5: Today's volume ≥ 1.5× 30-day average volume (relative volume surge)
   C6: 10-day average volume ≥ 1,000,000 shares (liquidity)
-
-Additional EMAs computed (informational):
-  EMA150, EMA200
+  C7: 100-day EMA ≥ 150-day EMA
+  C8: 150-day EMA ≥ 200-day EMA
 
 Results sorted by relative volume descending (highest surge first).
 """
@@ -42,8 +41,10 @@ class DanielsBreakoutSignal:
     c4: bool   # new 6-month high
     c5: bool   # rel vol ≥ 1.5
     c6: bool   # 10d avg vol ≥ 1M
+    c7: bool   # EMA100 ≥ EMA150
+    c8: bool   # EMA150 ≥ EMA200
     criteria_met: int
-    passes: bool          # all 6 criteria satisfied
+    passes: bool          # all 8 criteria satisfied
 
 
 def screen_daniels_breakout(
@@ -99,8 +100,10 @@ def screen_daniels_breakout(
     c4 = last_close >= high_6m
     c5 = rel_volume >= min_rel_vol
     c6 = avg_vol_10d >= min_avg_vol
+    c7 = last_ema100 >= last_ema150
+    c8 = last_ema150 >= last_ema200
 
-    criteria_list = [c1, c2, c3, c4, c5, c6]
+    criteria_list = [c1, c2, c3, c4, c5, c6, c7, c8]
     criteria_met  = sum(criteria_list)
 
     return DanielsBreakoutSignal(
@@ -114,7 +117,7 @@ def screen_daniels_breakout(
         high_6m=round(high_6m, 2),
         rel_volume=rel_volume,
         avg_vol_10d=round(avg_vol_10d, 0),
-        c1=c1, c2=c2, c3=c3, c4=c4, c5=c5, c6=c6,
+        c1=c1, c2=c2, c3=c3, c4=c4, c5=c5, c6=c6, c7=c7, c8=c8,
         criteria_met=criteria_met,
         passes=all(criteria_list),
     )

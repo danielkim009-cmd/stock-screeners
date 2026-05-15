@@ -4,8 +4,8 @@ import CandlestickChart from "../components/CandlestickChart";
 import EquityChart from "../components/EquityChart";
 import { exportCsv, today } from "../utils/exportCsv";
 
-const DANIELS_FIELDS = ["ticker","name","criteria_met","passes","last_close","ema21","ema50","ema100","ema150","ema200","high_6m","rel_volume","avg_vol_10d","c1","c2","c3","c4","c5","c6","price_change_pct","rel_vol","today_vol","market_cap","eps","sector","analyst_rating"];
-const DANIELS_HEADERS = { ticker:"Ticker", name:"Name", criteria_met:"Criteria Met", passes:"Passes", last_close:"Close", ema21:"EMA21", ema50:"EMA50", ema100:"EMA100", ema150:"EMA150", ema200:"EMA200", high_6m:"6m High", rel_volume:"Rel Vol (Signal)", avg_vol_10d:"Avg Vol 10d", c1:"C1", c2:"C2", c3:"C3", c4:"C4", c5:"C5", c6:"C6", price_change_pct:"Chg %", rel_vol:"Rel Vol 30d", today_vol:"Volume", market_cap:"Mkt Cap", eps:"EPS", sector:"Sector", analyst_rating:"Rating" };
+const DANIELS_FIELDS = ["ticker","name","criteria_met","passes","last_close","ema21","ema50","ema100","ema150","ema200","high_6m","rel_volume","avg_vol_10d","c1","c2","c3","c4","c5","c6","c7","c8","price_change_pct","rel_vol","today_vol","market_cap","eps","sector","analyst_rating"];
+const DANIELS_HEADERS = { ticker:"Ticker", name:"Name", criteria_met:"Criteria Met", passes:"Passes", last_close:"Close", ema21:"EMA21", ema50:"EMA50", ema100:"EMA100", ema150:"EMA150", ema200:"EMA200", high_6m:"6m High", rel_volume:"Rel Vol (Signal)", avg_vol_10d:"Avg Vol 10d", c1:"C1", c2:"C2", c3:"C3", c4:"C4", c5:"C5", c6:"C6", c7:"C7", c8:"C8", price_change_pct:"Chg %", rel_vol:"Rel Vol 30d", today_vol:"Volume", market_cap:"Mkt Cap", eps:"EPS", sector:"Sector", analyst_rating:"Rating" };
 import {
   fmtVol, fmtMarketCap,
   TickerCell, PriceChangePct, RelVolBadge, AnalystBadge,
@@ -50,6 +50,8 @@ const CRITERIA_LABELS = [
   { key: "c4", label: "New 6-month high" },
   { key: "c5", label: "Rel Vol ≥ 1.5×" },
   { key: "c6", label: "10d avg vol ≥ 1M" },
+  { key: "c7", label: "EMA100 ≥ EMA150" },
+  { key: "c8", label: "EMA150 ≥ EMA200" },
 ];
 
 const selectStyle = {
@@ -85,8 +87,8 @@ function ModeTab({ active, onClick, children }) {
 }
 
 function CriteriaBadge({ met }) {
-  const color = met === 6 ? "#56d364" : met >= 4 ? "#e3b341" : "#8b949e";
-  return <span style={{ color, fontWeight: 700 }}>{met}/6</span>;
+  const color = met === 8 ? "#56d364" : met >= 6 ? "#e3b341" : "#8b949e";
+  return <span style={{ color, fontWeight: 700 }}>{met}/8</span>;
 }
 
 function FilterChip({ label, active, color, onClick }) {
@@ -123,7 +125,7 @@ export default function DanielsBreakoutScreener() {
 
   // Screen state
   const [universe, setUniverse] = useState("sp500");
-  const [minCriteria, setMinCriteria] = useState(6);
+  const [minCriteria, setMinCriteria] = useState(7);
   const [maxTickers, setMaxTickers] = useState(3000);
   const [minRelVol, setMinRelVol] = useState(1.5);
   const [minAvgVol, setMinAvgVol] = useState(1000000);
@@ -325,7 +327,9 @@ export default function DanielsBreakoutScreener() {
             <label style={{ fontSize: 13, color: "#8b949e", display: "flex", alignItems: "center", gap: 8 }}>
               Min criteria:
               <select value={minCriteria} onChange={e => setMinCriteria(Number(e.target.value))} style={selectStyle}>
-                <option value={6}>6/6 — strict pass</option>
+                <option value={8}>8/8 — strict pass</option>
+                <option value={7}>7+ criteria</option>
+                <option value={6}>6+ criteria</option>
                 <option value={5}>5+ criteria</option>
                 <option value={4}>4+ criteria</option>
                 <option value={3}>3+ criteria</option>
@@ -485,8 +489,8 @@ export default function DanielsBreakoutScreener() {
                         <td style={{ ...td, color: r.c1 ? "#56d364" : "#8b949e" }}>${r.ema21.toFixed(2)}</td>
                         <td style={{ ...td, color: r.c2 ? "#56d364" : "#8b949e" }}>${r.ema50.toFixed(2)}</td>
                         <td style={{ ...td, color: r.c3 ? "#56d364" : "#8b949e" }}>${r.ema100.toFixed(2)}</td>
-                        <td style={{ ...td, color: "#8b949e" }}>${r.ema150?.toFixed(2) ?? "—"}</td>
-                        <td style={{ ...td, color: "#8b949e" }}>${r.ema200?.toFixed(2) ?? "—"}</td>
+                        <td style={{ ...td, color: r.c7 ? "#56d364" : "#8b949e" }}>${r.ema150?.toFixed(2) ?? "—"}</td>
+                        <td style={{ ...td, color: r.c8 ? "#56d364" : "#8b949e" }}>${r.ema200?.toFixed(2) ?? "—"}</td>
                         <td style={{ ...td, color: r.c4 ? "#56d364" : "#e3b341" }}>${r.high_6m.toFixed(2)}</td>
                         <td style={{ ...td, color: r.c6 ? "#56d364" : "#f85149", fontSize: 12 }}>{fmtVol(r.avg_vol_10d)}</td>
                       </tr>
@@ -499,7 +503,7 @@ export default function DanielsBreakoutScreener() {
 
           {response && visibleResults.length === 0 && (
             <div style={{ background: "#161b22", border: "1px solid #30363d", borderRadius: 8, padding: 24, textAlign: "center", color: "#8b949e" }}>
-              No stocks met {minCriteria}/6 criteria in this batch.{minCriteria === 6 && " Try lowering the minimum criteria or increasing the ticker count."}
+              No stocks met {minCriteria}/8 criteria in this batch.{minCriteria === 8 && " Try lowering the minimum criteria or increasing the ticker count."}
             </div>
           )}
         </>
