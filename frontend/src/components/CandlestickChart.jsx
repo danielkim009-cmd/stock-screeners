@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { createChart, CrosshairMode } from "lightweight-charts";
+import { createChart, CrosshairMode, LineStyle } from "lightweight-charts";
 
 function fmtVolLocal(v) {
   if (v == null) return "—";
@@ -73,8 +73,11 @@ export default function CandlestickChart({ data, markers, showVolume = false, tr
       const volSeries = chart.addHistogramSeries({
         priceFormat: { type: "volume" },
         priceScaleId: "vol",
-        lastValueVisible: false,
-        priceLineVisible: false,
+        lastValueVisible: true,
+        priceLineVisible: true,
+        priceLineStyle: LineStyle.Dotted,
+        priceLineWidth: 1,
+        priceLineColor: "#8b949e",
       });
       volSeries.priceScale().applyOptions({
         scaleMargins: { top: 0.8, bottom: 0 },
