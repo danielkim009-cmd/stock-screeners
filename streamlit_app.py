@@ -378,7 +378,7 @@ UNIVERSE_OPTIONS = {
 }
 
 UNIVERSE_MAX = {
-    "sp500":      500,
+    "sp500":      503,
     "nasdaq100":  100,
     "russell2000": 2000,
     "russell3000": 3000,
@@ -459,10 +459,9 @@ if page == "Daniel's Breakout":
         with col2:
             d_min = st.selectbox("Min Criteria (of 8)", list(range(1, 9)), index=5, key="d_min")
         with col3:
-            if "d_max" not in st.session_state or st.session_state.get("_d_uni_prev") != d_uni:
-                st.session_state["d_max"] = UNIVERSE_MAX.get(d_uni, 500)
-                st.session_state["_d_uni_prev"] = d_uni
-            d_max = st.number_input("Max Tickers", 50, 3000, step=50, key="d_max")
+            d_max_n = UNIVERSE_MAX.get(d_uni, 500)
+            d_max_opts = sorted({v for v in (100, 200, 300, 400) if v <= d_max_n} | {d_max_n})
+            d_max = st.selectbox("Max Tickers", d_max_opts, index=len(d_max_opts) - 1, key=f"d_max_{d_uni}")
         with col4:
             st.write(""); st.write("")
             d_run = st.button("Run Screen", type="primary", key="d_run", use_container_width=True)
@@ -988,10 +987,9 @@ elif page == "Turtle Trading":
         with col2:
             t_sig = st.selectbox("Signal", ["S2_BUY", "S1_BUY", "ALL"], key="t_sig")
         with col3:
-            if st.session_state.get("_t_uni_prev") != t_uni:
-                st.session_state["t_max"] = UNIVERSE_MAX.get(t_uni, 500)
-                st.session_state["_t_uni_prev"] = t_uni
-            t_max = st.number_input("Max Tickers", 50, 3000, UNIVERSE_MAX.get(t_uni, 500), 50, key="t_max")
+            t_max_n = UNIVERSE_MAX.get(t_uni, 500)
+            t_max_opts = sorted({v for v in (100, 200, 300, 400) if v <= t_max_n} | {t_max_n})
+            t_max = st.selectbox("Max Tickers", t_max_opts, index=len(t_max_opts) - 1, key=f"t_max_{t_uni}")
         with col4:
             st.write(""); st.write("")
             t_run = st.button("Run Screen", type="primary", key="t_run", use_container_width=True)
@@ -1103,10 +1101,9 @@ elif page == "Minervini SEPA":
         with col2:
             mv_min = st.selectbox("Min Criteria", [10, 9, 8, 7, 6, 5], key="mv_min")
         with col3:
-            if st.session_state.get("_mv_uni_prev") != mv_uni:
-                st.session_state["mv_max"] = UNIVERSE_MAX.get(mv_uni, 500)
-                st.session_state["_mv_uni_prev"] = mv_uni
-            mv_max = st.number_input("Max Tickers", 50, 3000, UNIVERSE_MAX.get(mv_uni, 500), 50, key="mv_max")
+            mv_max_n = UNIVERSE_MAX.get(mv_uni, 500)
+            mv_max_opts = sorted({v for v in (100, 200, 300, 400) if v <= mv_max_n} | {mv_max_n})
+            mv_max = st.selectbox("Max Tickers", mv_max_opts, index=len(mv_max_opts) - 1, key=f"mv_max_{mv_uni}")
         with col4:
             st.write(""); st.write("")
             mv_run = st.button("Run Screen", type="primary", key="mv_run", use_container_width=True)
