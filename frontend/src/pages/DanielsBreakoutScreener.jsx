@@ -125,7 +125,7 @@ export default function DanielsBreakoutScreener() {
 
   // Screen state
   const [universe, setUniverse] = useState("sp500");
-  const [minCriteria, setMinCriteria] = useState(7);
+  const [minCriteria, setMinCriteria] = useState(6);
   const [maxTickers, setMaxTickers] = useState(3000);
   const [minRelVol, setMinRelVol] = useState(1.5);
   const [minAvgVol, setMinAvgVol] = useState(1000000);
@@ -517,7 +517,7 @@ export default function DanielsBreakoutScreener() {
             <div style={{ background: "#0d2b0d", border: "1px solid #2ea04366", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#7ee787", display: "flex", alignItems: "flex-start", gap: 10 }}>
               <span style={{ fontSize: 16, lineHeight: 1 }}>💡</span>
               <span>
-                <strong>S&P 500 recommended settings:</strong> Trailing Stop 25% · Max Positions 3 · Rank by Rel Strength 20d · Rebalance Quarterly
+                <strong>S&P 500 recommended settings:</strong> Trailing Stop 25% · Max Positions 3 · Rank by Rel Strength 20d · Rebalance Quarterly · Min Criteria 6/8
                 <button onClick={() => { setPfExitMode("PCT_TRAIL"); setPfTrailPct(25); setPfMaxPos(3); setPfRankBy("RS_20"); setPfRebalance("QUARTERLY"); }}
                   style={{ marginLeft: 12, padding: "2px 10px", borderRadius: 5, border: "1px solid #2ea04366", background: "#238636", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                   Apply
@@ -529,7 +529,7 @@ export default function DanielsBreakoutScreener() {
             <div style={{ background: "#0d1f3c", border: "1px solid #388bfd66", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#79c0ff", display: "flex", alignItems: "flex-start", gap: 10 }}>
               <span style={{ fontSize: 16, lineHeight: 1 }}>💡</span>
               <span>
-                <strong>NASDAQ 100 recommended settings:</strong> Trailing Stop 20% · Max Positions 2 · Rank by Rel Vol · Rebalance Quarterly
+                <strong>NASDAQ 100 recommended settings:</strong> Trailing Stop 20% · Max Positions 2 · Rank by Rel Vol · Rebalance Quarterly · Min Criteria 6/8
                 <button onClick={() => { setPfExitMode("PCT_TRAIL"); setPfTrailPct(20); setPfMaxPos(2); setPfRankBy("REL_VOL"); setPfRebalance("QUARTERLY"); }}
                   style={{ marginLeft: 12, padding: "2px 10px", borderRadius: 5, border: "1px solid #388bfd66", background: "#1f6feb", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                   Apply

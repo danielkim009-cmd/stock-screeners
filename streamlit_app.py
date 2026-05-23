@@ -395,9 +395,9 @@ BENCHMARK_MAP = {
 }
 
 RECOMMENDATIONS = {
-    "S&P 500":      dict(exit="PCT_TRAIL", trail=25.0, pos=5,  rank="RS_126",  rebal="QUARTERLY", lookback=63),
-    "NASDAQ 100":   dict(exit="PCT_TRAIL", trail=20.0, pos=3,  rank="RS_126",  rebal="MONTHLY",   lookback=63),
-    "Russell 2000": dict(exit="PCT_TRAIL", trail=25.0, pos=10, rank="REL_VOL", rebal="QUARTERLY", lookback=126),
+    "S&P 500":      dict(exit="PCT_TRAIL", trail=25.0, pos=5,  rank="RS_126",  rebal="QUARTERLY", lookback=63,  min_criteria=6),
+    "NASDAQ 100":   dict(exit="PCT_TRAIL", trail=20.0, pos=3,  rank="RS_126",  rebal="MONTHLY",   lookback=63,  min_criteria=6),
+    "Russell 2000": dict(exit="PCT_TRAIL", trail=25.0, pos=10, rank="REL_VOL", rebal="QUARTERLY", lookback=126, min_criteria=6),
 }
 
 PERIOD_OPTIONS  = {1: 365, 2: 730, 3: 1095, 5: 1825, 10: 3650, 20: 7300}
@@ -457,7 +457,7 @@ if page == "Daniel's Breakout":
             d_uni_lbl = st.selectbox("Universe", list(UNIVERSE_OPTIONS), key="d_uni")
             d_uni = UNIVERSE_OPTIONS[d_uni_lbl]
         with col2:
-            d_min = st.selectbox("Min Criteria (of 8)", list(range(1, 9)), index=6, key="d_min")
+            d_min = st.selectbox("Min Criteria (of 8)", list(range(1, 9)), index=5, key="d_min")
         with col3:
             if "d_max" not in st.session_state or st.session_state.get("_d_uni_prev") != d_uni:
                 st.session_state["d_max"] = UNIVERSE_MAX.get(d_uni, 500)
@@ -633,6 +633,7 @@ if page == "Daniel's Breakout":
             st.session_state["pf_rank"]          = r["rank"]
             st.session_state["pf_rebal"]         = r["rebal"]
             st.session_state["pf_high_lookback"] = r["lookback"]
+            st.session_state["pf_min_crit"]      = r["min_criteria"]
 
         _top1, _top2 = st.columns(2)
         with _top1:
@@ -650,7 +651,8 @@ if page == "Daniel's Breakout":
             f"Trailing Stop {rec['trail']:.0f}% · "
             f"Max Positions {rec['pos']} · "
             f"Rank by {rec['rank']} · "
-            f"Rebalance {rec['rebal'].capitalize()}"
+            f"Rebalance {rec['rebal'].capitalize()} · "
+            f"Min Criteria {rec['min_criteria']}/8"
         )
 
         col1, col2, col3, col4 = st.columns(4)
@@ -665,7 +667,7 @@ if page == "Daniel's Breakout":
                 pf_trail = float(rec["trail"])  # default value, not shown
         with col2:
             pf_maxpos  = st.number_input("Max Positions", 1, 50, rec["pos"], 1, key="pf_maxpos")
-            pf_min_crit = st.selectbox("Min Criteria (of 8)", list(range(1, 9)), index=6, key="pf_min_crit")
+            pf_min_crit = st.selectbox("Min Criteria (of 8)", list(range(1, 9)), index=rec["min_criteria"] - 1, key="pf_min_crit")
             _LOOKBACK_OPTIONS = [63, 126, 189, 252]
             pf_high_lookback = st.selectbox(
                 "C4 — High Lookback",

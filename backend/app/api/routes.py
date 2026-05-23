@@ -414,7 +414,7 @@ def screen_daniels_strategy(
         description="Universe: sp500 | nasdaq100 | russell2000 | russell3000",
     ),
     min_criteria: int = Query(
-        default=7,
+        default=6,
         ge=1,
         le=8,
         description="Minimum number of criteria that must be met (1–8). 8 = strict pass.",

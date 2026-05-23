@@ -45,7 +45,7 @@ def fetch_tickers(universe: str) -> list[str]:
         return json.loads(_cache_path(universe).read_text())
 
     dispatch = {
-        "sp500":       lambda: _fetch_ishares("IVV"),
+        "sp500":       _fetch_sp500,
         "nasdaq100":   _fetch_nasdaq100,
         "russell2000": lambda: _fetch_ishares("IWM"),
         "russell3000": lambda: _fetch_ishares("IWB"),
@@ -56,7 +56,31 @@ def fetch_tickers(universe: str) -> list[str]:
 
     if tickers:
         _cache_path(universe).write_text(json.dumps(tickers))
-    return tickers
+        return tickers
+
+    # Live fetch returned empty (source blocked / changed). Fall back to the
+    # stale on-disk cache if one exists rather than returning nothing.
+    p = _cache_path(universe)
+    if p.exists():
+        return json.loads(p.read_text())
+    return []
+
+
+def _fetch_sp500() -> list[str]:
+    """S&P 500 components — Wikipedia primary, iShares IVV as fallback.
+
+    iShares started serving an HTML bot-wall in place of the holdings CSV
+    around 2026-05, so Wikipedia (already used for point-in-time history)
+    is the more reliable source.
+    """
+    try:
+        from app.data.sp500_history import _fetch_sp500_current
+        tickers = _fetch_sp500_current()
+        if tickers:
+            return tickers
+    except Exception:
+        pass
+    return _fetch_ishares("IVV")
 
 
 # --------------------------------------------------------------------------- #
