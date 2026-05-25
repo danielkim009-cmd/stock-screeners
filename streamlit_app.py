@@ -396,7 +396,7 @@ BENCHMARK_MAP = {
 
 RECOMMENDATIONS = {
     "S&P 500":      dict(exit="PCT_TRAIL", trail=25.0, pos=5,  rank="RS_126",  rebal="QUARTERLY", lookback=63,  min_criteria=6),
-    "NASDAQ 100":   dict(exit="PCT_TRAIL", trail=20.0, pos=3,  rank="RS_126",  rebal="MONTHLY",   lookback=63,  min_criteria=6),
+    "NASDAQ 100":   dict(exit="PCT_TRAIL", trail=15.0, pos=3,  rank="RS_126",  rebal="MONTHLY",   lookback=63,  min_criteria=6),
     "Russell 2000": dict(exit="PCT_TRAIL", trail=25.0, pos=10, rank="REL_VOL", rebal="QUARTERLY", lookback=126, min_criteria=6),
 }
 
@@ -644,6 +644,8 @@ if page == "Daniel's Breakout":
         rec        = RECOMMENDATIONS[pf_uni_lbl]
 
         rec_color = {"S&P 500": "green", "NASDAQ 100": "blue", "Russell 2000": "orange"}[pf_uni_lbl]
+        _LOOKBACK_LABEL = {63: "3 months", 126: "6 months", 189: "9 months", 252: "12 months"}
+        _rec_lookback_lbl = _LOOKBACK_LABEL.get(rec["lookback"], f"{rec['lookback']}d")
         st.info(
             f"**💡 Recommended for {pf_uni_lbl}:** "
             f"Exit {rec['exit']} · "
@@ -651,7 +653,8 @@ if page == "Daniel's Breakout":
             f"Max Positions {rec['pos']} · "
             f"Rank by {rec['rank']} · "
             f"Rebalance {rec['rebal'].capitalize()} · "
-            f"Min Criteria {rec['min_criteria']}/8"
+            f"Min Criteria {rec['min_criteria']}/8 · "
+            f"C4 High Lookback {_rec_lookback_lbl}"
         )
 
         col1, col2, col3, col4 = st.columns(4)
