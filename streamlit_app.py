@@ -395,7 +395,7 @@ BENCHMARK_MAP = {
 }
 
 RECOMMENDATIONS = {
-    "S&P 500":      dict(exit="PCT_TRAIL", trail=25.0, pos=5,  rank="RS_126",  rebal="QUARTERLY", lookback=63,  min_criteria=6),
+    "S&P 500":      dict(exit="PCT_TRAIL", trail=23.5, pos=5,  rank="RS_126",  rebal="QUARTERLY", lookback=63,  min_criteria=6),
     "NASDAQ 100":   dict(exit="PCT_TRAIL", trail=15.0, pos=3,  rank="RS_126",  rebal="MONTHLY",   lookback=63,  min_criteria=6),
     "Russell 2000": dict(exit="PCT_TRAIL", trail=25.0, pos=10, rank="REL_VOL", rebal="QUARTERLY", lookback=126, min_criteria=6),
 }
