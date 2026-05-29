@@ -255,7 +255,7 @@ def _fetch_one_info(ticker: str) -> tuple[str, dict]:
                 break  # success — stop retrying
             except Exception:
                 if attempt < 2:
-                    time.sleep(0.5 * (attempt + 1))
+                    time.sleep(5)
 
         except Exception:
             break
@@ -263,7 +263,7 @@ def _fetch_one_info(ticker: str) -> tuple[str, dict]:
     return ticker, result
 
 
-def fetch_ticker_info(tickers: list[str], max_workers: int = 8) -> dict[str, dict]:
+def fetch_ticker_info(tickers: list[str], max_workers: int = 4) -> dict[str, dict]:
     """
     Fetch name, market cap, EPS, sector, and analyst rating for multiple
     tickers in parallel.  Returns {ticker: {field: value}}.
