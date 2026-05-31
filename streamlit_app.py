@@ -395,9 +395,9 @@ BENCHMARK_MAP = {
 }
 
 RECOMMENDATIONS = {
-    "S&P 500":      dict(exit="PCT_TRAIL", trail=23.5, pos=5,  rank="RS_126",  rebal="QUARTERLY", lookback=63,  min_criteria=6),
-    "NASDAQ 100":   dict(exit="PCT_TRAIL", trail=15.0, pos=3,  rank="RS_126",  rebal="MONTHLY",   lookback=63,  min_criteria=6),
-    "Russell 2000": dict(exit="PCT_TRAIL", trail=25.0, pos=10, rank="REL_VOL", rebal="QUARTERLY", lookback=126, min_criteria=6),
+    "S&P 500":      dict(exit="PCT_TRAIL", trail=23.5, pos=5,  rank="RS_126",  rebal="QUARTERLY", lookback=63,  min_criteria=8),
+    "NASDAQ 100":   dict(exit="PCT_TRAIL", trail=15.0, pos=3,  rank="RS_126",  rebal="MONTHLY",   lookback=63,  min_criteria=8),
+    "Russell 2000": dict(exit="PCT_TRAIL", trail=25.0, pos=10, rank="REL_VOL", rebal="QUARTERLY", lookback=126, min_criteria=8),
 }
 
 PERIOD_OPTIONS  = {1: 365, 2: 730, 3: 1095, 5: 1825, 10: 3650, 20: 7300}
@@ -457,7 +457,7 @@ if page == "Daniel's Breakout":
             d_uni_lbl = st.selectbox("Universe", list(UNIVERSE_OPTIONS), key="d_uni")
             d_uni = UNIVERSE_OPTIONS[d_uni_lbl]
         with col2:
-            d_min = st.selectbox("Min Criteria (of 8)", list(range(1, 9)), index=5, key="d_min")
+            d_min = st.selectbox("Min Criteria (of 8)", [8, 7, 6, 5], index=0, key="d_min")
         with col3:
             d_max_n = UNIVERSE_MAX.get(d_uni, 500)
             d_max_opts = sorted({v for v in (100, 200, 300, 400) if v <= d_max_n} | {d_max_n})
@@ -669,7 +669,7 @@ if page == "Daniel's Breakout":
                 pf_trail = float(rec["trail"])  # default value, not shown
         with col2:
             pf_maxpos  = st.number_input("Max Positions", 1, 50, rec["pos"], 1, key="pf_maxpos")
-            pf_min_crit = st.selectbox("Min Criteria (of 8)", list(range(1, 9)), index=rec["min_criteria"] - 1, key="pf_min_crit")
+            pf_min_crit = st.selectbox("Min Criteria (of 8)", [8, 7, 6, 5], index=[8, 7, 6, 5].index(rec["min_criteria"]), key="pf_min_crit")
             _LOOKBACK_OPTIONS = [63, 126, 189, 252]
             pf_high_lookback = st.selectbox(
                 "C4 — High Lookback",
