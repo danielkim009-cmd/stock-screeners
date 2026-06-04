@@ -358,10 +358,23 @@ chart.subscribeCrosshairMove(param => {{
   document.getElementById('ie200').textContent = e200;
 }});
 
+// Force a 5-bar gap after the last candle by setting the visible logical
+// range past the final bar index. Re-applied on a timer + after resize so
+// fitContent / late layout passes in the Streamlit iframe can't reset it.
+const RIGHT_GAP = 5;
+function applyGap() {{
+  const n = candleData.length;
+  if (!n) return;
+  chart.timeScale().setVisibleLogicalRange({{ from: -0.5, to: n - 0.5 + RIGHT_GAP }});
+}}
 chart.timeScale().fitContent();
+applyGap();
+setTimeout(applyGap, 60);
+setTimeout(applyGap, 250);
 new ResizeObserver(() => {{
   const w = document.getElementById('chart').clientWidth;
   chart.applyOptions({{ width: w }});
+  applyGap();
 }}).observe(document.getElementById('chart'));
 </script></body></html>"""
 
