@@ -75,9 +75,9 @@ export default function CandlestickChart({ data, markers, showVolume = false, tr
         priceScaleId: "vol",
         lastValueVisible: true,
         priceLineVisible: true,
-        priceLineStyle: LineStyle.Dotted,
+        priceLineStyle: LineStyle.Dashed,
         priceLineWidth: 1,
-        priceLineColor: "#8b949e",
+        priceLineColor: "#ffffff",
       });
       volSeries.priceScale().applyOptions({
         scaleMargins: { top: 0.8, bottom: 0 },
@@ -85,7 +85,7 @@ export default function CandlestickChart({ data, markers, showVolume = false, tr
       volSeries.setData(data.slice(trimStart).map(d => ({
         time: d.date,
         value: d.volume,
-        color: d.close >= d.open ? "#56d36466" : "#f8514966",
+        color: d.close >= d.open ? "#56d364" : "#f85149",
       })));
     }
 

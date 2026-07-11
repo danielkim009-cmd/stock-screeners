@@ -103,6 +103,10 @@ def run_daniels_portfolio_backtest(
     rank_by: str = "REL_VOL",         # "REL_VOL" | "RS_20" | "RS_63" | "RS_126" | "RS_VOL"
     pit_initial: Optional[set[str]] = None,     # point-in-time: tickers at start date
     pit_changes: Optional[list[dict]] = None,   # point-in-time: [{date, added, removed}, ...] sorted ascending
+    cost_bps: float = 0.0,            # one-way slippage+commission per fill, in basis points
+    regime_filter: bool = False,      # block NEW entries while benchmark close < its 200-day SMA
+    sizing: str = "EQUAL",            # "EQUAL" | "ATR_RISK" (risk_pct of equity per ATR-stop distance)
+    risk_pct: float = 0.75,           # ATR_RISK: % of equity risked per position
 ) -> Optional[PortfolioBacktestResult]:
     """
     Run a portfolio-level walk-forward backtest of Daniel's breakout strategy.
@@ -125,7 +129,9 @@ def run_daniels_portfolio_backtest(
     if not stock_dfs:
         return None
 
-    WARMUP = 210   # bars needed for EMA200 + 6m-high + vol history
+    WARMUP  = 210   # bars needed for EMA200 + 6m-high + vol history
+    cost    = cost_bps / 10_000.0
+    _sizing = sizing.upper()
 
     # ── 0. Precompute benchmark ROC lookup {date: roc_N} ─────────────────── #
     bm_roc: dict[str, dict] = {}   # date → {"r20": float, "r63": float, "r126": float}
@@ -142,6 +148,15 @@ def run_daniels_portfolio_backtest(
                 "r63":  float(bm_r63[i])  if not np.isnan(bm_r63[i])  else 0.0,
                 "r126": float(bm_r126[i]) if not np.isnan(bm_r126[i]) else 0.0,
             }
+
+    # ── 0b. Benchmark regime map: close > 200-day SMA ────────────────────── #
+    regime_by_date: dict[str, bool] = {}
+    if regime_filter and spy_df is not None and len(spy_df) >= 200:
+        bm_c   = spy_df["Close"].values
+        bm_sma = spy_df["Close"].rolling(200).mean().values
+        for i, idx in enumerate(spy_df.index):
+            if not np.isnan(bm_sma[i]):
+                regime_by_date[str(idx.date())] = bool(bm_c[i] > bm_sma[i])
 
     # ── 1. Precompute indicators for every stock ─────────────────────────── #
     precomputed: dict[str, dict] = {}
@@ -223,6 +238,7 @@ def run_daniels_portfolio_backtest(
             "c5": c5, "c6": c6, "c7": c7, "c8": c8,
             "date_to_idx": date_to_idx,
             "n":           len(dates),
+            "last_date":   dates[-1],
         }
 
     if not precomputed:
@@ -319,7 +335,7 @@ def run_daniels_portfolio_backtest(
         active_tickers = set(precomputed.keys())
     pit_change_idx = 0  # pointer into pit_changes (sorted ascending by date)
 
-    def portfolio_value(date: str) -> float:
+    def _positions_value(date: str, price_col: str) -> float:
         total = cash
         for t, pos in positions.items():
             pc = precomputed.get(t)
@@ -330,18 +346,32 @@ def run_daniels_portfolio_backtest(
             if idx is None:
                 total += pos["position_value"]
                 continue
-            cp = float(pc["close"][idx])
-            if cp > 0 and not np.isnan(cp):
-                total += pos["position_value"] * cp / pos["entry_price"]
+            p = float(pc[price_col][idx])
+            if p > 0 and not np.isnan(p):
+                total += pos["position_value"] * p / pos["entry_eff"]
             else:
                 total += pos["position_value"]
         return total
 
+    def portfolio_value(date: str) -> float:
+        """Mark positions at today's close."""
+        return _positions_value(date, "close")
+
+    def portfolio_value_at_open(date: str) -> float:
+        """Mark positions at today's open — used to size new entries, since
+        today's close is not yet known when the entry fill happens at the open."""
+        return _positions_value(date, "open")
+
+    last_regime = True   # carry-forward benchmark regime state (True = risk-on)
+
     for di, date in enumerate(all_dates):
+        if date in regime_by_date:
+            last_regime = regime_by_date[date]
         if di < WARMUP:
             continue
         if backtest_start and date < backtest_start:
             continue
+        regime_ok = (not regime_filter) or last_regime
 
         # ── Apply point-in-time composition changes for this date ────────── #
         if pit_changes:
@@ -370,16 +400,31 @@ def run_daniels_portfolio_backtest(
             entry_price = float(pc["open"][idx])
             if entry_price <= 0 or np.isnan(entry_price):
                 continue
+            entry_eff = entry_price * (1.0 + cost)
 
-            # Equal weight: 1/max_positions of current total equity
-            total_eq   = portfolio_value(date)
+            # Size from equity marked at today's OPEN (close isn't known yet)
+            total_eq   = portfolio_value_at_open(date)
             slot_value = total_eq / max_positions
-            if cash < slot_value * 0.5:
+
+            if _sizing == "ATR_RISK":
+                # Risk risk_pct% of equity against the ATR stop distance;
+                # capped at 2× an equal-weight slot to limit concentration.
+                atr_val   = float(pc["atr20"][sig_idx])
+                stop_frac = atr_multiplier * atr_val / entry_price if entry_price > 0 else 0.0
+                if not np.isnan(stop_frac) and stop_frac > 0:
+                    target = min(total_eq * (risk_pct / 100.0) / stop_frac, slot_value * 2.0)
+                else:
+                    target = slot_value
+            else:
+                target = slot_value
+
+            if cash < target * 0.5:
                 continue
-            alloc = min(slot_value, cash)
+            alloc = min(target, cash)
             cash -= alloc
             positions[ticker] = {
                 "entry_price":    entry_price,
+                "entry_eff":      entry_eff,
                 "entry_date":     date,
                 "trail_high":     entry_price,
                 "position_value": alloc,
@@ -396,6 +441,28 @@ def run_daniels_portfolio_backtest(
                 continue
             idx = pc["date_to_idx"].get(date)
             if idx is None:
+                # Data ended for this ticker (delisting / acquisition):
+                # force-exit at its last known close instead of holding a
+                # zombie position valued at cost forever.
+                if date > pc["last_date"]:
+                    cp = float(pc["close"][-1])
+                    if cp > 0 and not np.isnan(cp):
+                        cp_eff   = cp * (1.0 - cost)
+                        exit_val = pos["position_value"] * cp_eff / pos["entry_eff"]
+                        pnl_pct  = (cp_eff - pos["entry_eff"]) / pos["entry_eff"] * 100
+                        cash    += exit_val
+                        trades.append(PortfolioTrade(
+                            ticker=ticker,
+                            entry_date=pos["entry_date"],
+                            exit_date=pc["last_date"],
+                            entry_price=round(pos["entry_price"], 2),
+                            exit_price=round(cp, 2),
+                            pnl_pct=round(pnl_pct, 2),
+                            days_held=di - pos["entry_master_idx"],
+                            exit_reason="DELISTED",
+                            **pos.get("criteria", {}),
+                        ))
+                        exited.append(ticker)
                 continue
 
             cp = float(pc["close"][idx])
@@ -414,8 +481,9 @@ def run_daniels_portfolio_backtest(
             at_end   = (di == n_total - 1)
 
             if exit_sma or exit_atr or exit_pct or at_end:
-                exit_val = pos["position_value"] * cp / pos["entry_price"]
-                pnl_pct  = (cp - pos["entry_price"]) / pos["entry_price"] * 100
+                cp_eff   = cp * (1.0 - cost)
+                exit_val = pos["position_value"] * cp_eff / pos["entry_eff"]
+                pnl_pct  = (cp_eff - pos["entry_eff"]) / pos["entry_eff"] * 100
                 cash    += exit_val
 
                 if at_end and not exit_sma and not exit_atr and not exit_pct:
@@ -476,8 +544,9 @@ def run_daniels_portfolio_backtest(
                 cp = float(pc["close"][idx])
                 if np.isnan(cp) or cp <= 0:
                     continue
-                exit_val = pos["position_value"] * cp / pos["entry_price"]
-                pnl_pct  = (cp - pos["entry_price"]) / pos["entry_price"] * 100
+                cp_eff   = cp * (1.0 - cost)
+                exit_val = pos["position_value"] * cp_eff / pos["entry_eff"]
+                pnl_pct  = (cp_eff - pos["entry_eff"]) / pos["entry_eff"] * 100
                 cash    += exit_val
                 trades.append(PortfolioTrade(
                     ticker=ticker,
@@ -496,12 +565,16 @@ def run_daniels_portfolio_backtest(
                 del positions[t]
 
             # Queue the top-N signals not already held for entry tomorrow
-            new_entries = [(t, rv, si) for t, rv, si in all_signals[:max_positions * 2] if t not in positions]
-            slots = max_positions - len(positions)
-            pending = new_entries[:slots * 2]
+            # (blocked while the benchmark regime is risk-off)
+            if regime_ok:
+                new_entries = [(t, rv, si) for t, rv, si in all_signals[:max_positions * 2] if t not in positions]
+                slots = max_positions - len(positions)
+                pending = new_entries[:slots * 2]
+            else:
+                pending = []
 
         # ── 3c. Scan for new breakout signals (only active tickers) ──────── #
-        if len(positions) < max_positions:
+        if len(positions) < max_positions and regime_ok:
             new_signals: list[tuple[str, float, int]] = []
             for ticker in active_tickers:
                 if ticker in positions:

@@ -543,7 +543,7 @@ export default function MinerviniScreener() {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
-                      {["Ticker", "Chg %", "Rel Vol", "Vol", "Mkt Cap", "EPS", "Sector", "Rating", "Met", "RS", "Close", "% from High", "% from Low", "MA50", "MA200", "C1","C2","C3","C4","C5","C6","C7","C8","C9","C10", "BT"].map(h => (
+                      {["Ticker", "Chg %", "Rel Vol", "Vol", "Mkt Cap", "EPS", "Sector", "Rating", "Met", "RS", "Close", "% from High", "% from Low", "MA50", "MA200", "BT", "C1","C2","C3","C4","C5","C6","C7","C8","C9","C10"].map(h => (
                         <th key={h} style={th}>{h}</th>
                       ))}
                     </tr>
@@ -581,9 +581,6 @@ export default function MinerviniScreener() {
                             {r.ma200_trend > 0 ? "▲" : "▼"}{Math.abs(r.ma200_trend).toFixed(1)}%
                           </span>
                         </td>
-                        {["c1","c2","c3","c4","c5","c6","c7","c8","c9","c10"].map(c => (
-                          <td key={c} style={{ ...td, textAlign: "center" }}><Check pass={r[c]} /></td>
-                        ))}
                         <td style={{ ...td, textAlign: "center" }}>
                           <button
                             onClick={e => { e.stopPropagation(); startBacktest(r.ticker, btPeriod, btExitMode, btTrailPct); }}
@@ -598,6 +595,9 @@ export default function MinerviniScreener() {
                             BT
                           </button>
                         </td>
+                        {["c1","c2","c3","c4","c5","c6","c7","c8","c9","c10"].map(c => (
+                          <td key={c} style={{ ...td, textAlign: "center" }}><Check pass={r[c]} /></td>
+                        ))}
                       </tr>
                     ))}
                   </tbody>

@@ -531,6 +531,9 @@ if page == "Daniel's Breakout":
                         "Passes":    "✓" if sig.passes else "",
                         "Rel Vol":   round(sig.rel_volume, 2),
                         "Avg Vol 10d": fmt_vol(sig.avg_vol_10d),
+                        "Mkt Cap": float(m["market_cap"]) if m.get("market_cap") else 0.0,
+                        "Sector":    m.get("sector", ""),
+                        "Rating":    m.get("analyst_rating", ""),
                         "EMA21":     round(sig.ema21, 2),
                         "EMA50":     round(sig.ema50, 2),
                         "EMA100":    round(sig.ema100, 2),
@@ -545,9 +548,6 @@ if page == "Daniel's Breakout":
                         "C6": "✓" if sig.c6 else "✗",
                         "C7": "✓" if sig.c7 else "✗",
                         "C8": "✓" if sig.c8 else "✗",
-                        "Mkt Cap": float(m["market_cap"]) if m.get("market_cap") else 0.0,
-                        "Sector":    m.get("sector", ""),
-                        "Rating":    m.get("analyst_rating", ""),
                     })
                 rows.sort(key=lambda r: (-int(r["Passes"] == "✓"), -r["Criteria"], -r["Rel Vol"], -r["Mkt Cap"]))
                 st.session_state["d_rows"] = rows

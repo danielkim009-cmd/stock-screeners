@@ -54,6 +54,9 @@ class BacktestResult:
     n_trades:           int
     sharpe_ratio:       float
     avg_trade_pnl_pct:  float
+    avg_win_pct:        float = 0.0
+    avg_loss_pct:       float = 0.0
+    bh_max_drawdown_pct: float = 0.0
 
 
 # --------------------------------------------------------------------------- #
@@ -220,6 +223,13 @@ def run_minervini_backtest(
     bh_end        = float(close[-1])
     bh_return_pct = (bh_end / bh_start - 1) * 100 if bh_start > 0 else 0.0
 
+    bh_vals = np.asarray(close[warmup:], dtype=float)
+    if len(bh_vals) > 1:
+        bh_peak   = np.maximum.accumulate(bh_vals)
+        bh_max_dd = float(((bh_vals - bh_peak) / bh_peak * 100).min())
+    else:
+        bh_max_dd = 0.0
+
     eq_vals = np.array([e["value"] for e in equity_curve], dtype=float)
     if len(eq_vals) > 1:
         peak      = np.maximum.accumulate(eq_vals)
@@ -231,10 +241,13 @@ def run_minervini_backtest(
         max_dd = 0.0
         sharpe = 0.0
 
-    n_trades = len(trades)
-    wins     = sum(1 for t in trades if t.pnl_pct > 0)
-    win_rate = wins / n_trades * 100 if n_trades > 0 else 0.0
-    avg_pnl  = sum(t.pnl_pct for t in trades) / n_trades if n_trades > 0 else 0.0
+    n_trades  = len(trades)
+    win_pnls  = [t.pnl_pct for t in trades if t.pnl_pct > 0]
+    loss_pnls = [t.pnl_pct for t in trades if t.pnl_pct < 0]
+    win_rate  = len(win_pnls) / n_trades * 100 if n_trades > 0 else 0.0
+    avg_win   = sum(win_pnls)  / len(win_pnls)  if win_pnls  else 0.0
+    avg_loss  = sum(loss_pnls) / len(loss_pnls) if loss_pnls else 0.0
+    avg_pnl   = sum(t.pnl_pct for t in trades) / n_trades if n_trades > 0 else 0.0
 
     return BacktestResult(
         ticker=ticker,
@@ -249,4 +262,7 @@ def run_minervini_backtest(
         n_trades=n_trades,
         sharpe_ratio=round(sharpe, 2),
         avg_trade_pnl_pct=round(avg_pnl, 2),
+        avg_win_pct=round(avg_win, 2),
+        avg_loss_pct=round(avg_loss, 2),
+        bh_max_drawdown_pct=round(bh_max_dd, 1),
     )

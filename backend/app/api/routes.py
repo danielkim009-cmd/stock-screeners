@@ -62,7 +62,14 @@ class TurtleResult(_MetaMixin):
 class ScreenerResponse(BaseModel):
     strategy: str
     universe: str
-    total_screened: int
+    total_screened: int          # tickers attempted (universe, capped at max_tickers)
+    tickers_fetched: int         # tickers whose price data actually downloaded OK —
+                                 # if this is well below total_screened, the run was
+                                 # degraded (rate-limit/partial Yahoo outage) and the
+                                 # result list is likely incomplete
+    as_of: Optional[str] = None  # date (YYYY-MM-DD) of the latest price bar in the
+                                 # fetched data — lets consumers detect stale/holiday
+                                 # data (as_of < today means the market hasn't traded)
     matches: int
     results: list[Any]
 
@@ -136,7 +143,10 @@ class BacktestResponse(BaseModel):
     total_return_pct:  float
     bh_return_pct:     float
     max_drawdown_pct:  float
+    bh_max_drawdown_pct: float = 0.0
     win_rate_pct:      float
+    avg_win_pct:       float = 0.0
+    avg_loss_pct:      float = 0.0
     n_trades:          int
     sharpe_ratio:      float
     avg_trade_pnl_pct: float
@@ -192,6 +202,25 @@ class OHLCVPoint(BaseModel):
 #  Endpoints
 # --------------------------------------------------------------------------- #
 
+@router.get("/health")
+def health():
+    """Lightweight liveness check for monitoring and the scheduled report task."""
+    from datetime import date
+    return {"status": "ok", "date": date.today().isoformat()}
+
+
+def _latest_bar_date(data: dict) -> Optional[str]:
+    """Most recent bar date (YYYY-MM-DD) across fetched OHLCV frames."""
+    latest = None
+    for df in data.values():
+        if df is None or df.empty:
+            continue
+        d = df.index[-1]
+        if latest is None or d > latest:
+            latest = d
+    return latest.strftime("%Y-%m-%d") if latest is not None else None
+
+
 @router.get("/universes")
 def get_universes():
     """Return available universe options."""
@@ -228,7 +257,13 @@ def screen_turtle_strategy(
     - ALL: return everything (including NONE signals)
     """
     tickers = fetch_tickers(universe)[:max_tickers]
-    data    = fetch_bulk_ohlcv(tickers, period_days=400)
+    try:
+        data = fetch_bulk_ohlcv(tickers, period_days=400)
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Market data fetch failed for all tickers, not a genuine 0-match day: {e}",
+        )
 
     # Step 1: compute RS ratings for the full universe
     returns: dict[str, float] = {}
@@ -292,6 +327,7 @@ def screen_turtle_strategy(
         strategy="turtle",
         universe=universe,
         total_screened=len(tickers),
+        tickers_fetched=len(data),
         matches=len([r for r in results if r.signal != "NONE"]),
         results=results,
     )
@@ -322,7 +358,13 @@ def screen_minervini_strategy(
     RS Rating is computed relative to all tickers in the screened batch.
     """
     tickers = fetch_tickers(universe)[:max_tickers]
-    data    = fetch_bulk_ohlcv(tickers, period_days=400)
+    try:
+        data = fetch_bulk_ohlcv(tickers, period_days=400)
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Market data fetch failed for all tickers, not a genuine 0-match day: {e}",
+        )
 
     # Step 1: compute 12-month returns for RS Rating
     returns: dict[str, float] = {}
@@ -402,6 +444,7 @@ def screen_minervini_strategy(
         strategy="minervini",
         universe=universe,
         total_screened=len(tickers),
+        tickers_fetched=len(data),
         matches=len([r for r in results if r.passes]),
         results=results,
     )
@@ -445,10 +488,17 @@ def screen_daniels_strategy(
     """
     Run Daniel's Breakout screen: EMA stack + volume surge + new N-day high.
 
-    Requires ~350 calendar days of price history for EMA200 and 6-month high.
+    Requires ~505 calendar days of price history for EMA200 warmup + 6-month high
+    (matches the Streamlit screener's buffer).
     """
     tickers = fetch_tickers(universe)[:max_tickers]
-    data    = fetch_bulk_ohlcv(tickers, period_days=350)
+    try:
+        data = fetch_bulk_ohlcv(tickers, period_days=505)
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Market data fetch failed for all tickers, not a genuine 0-match day: {e}",
+        )
 
     # Pass 1: screen + collect raw (sig, df) pairs
     raw: list[tuple] = []
@@ -504,6 +554,8 @@ def screen_daniels_strategy(
         strategy="daniels",
         universe=universe,
         total_screened=len(tickers),
+        tickers_fetched=len(data),
+        as_of=_latest_bar_date(data),
         matches=len([r for r in results if r.passes]),
         results=results,
     )
@@ -512,21 +564,29 @@ def screen_daniels_strategy(
 @router.get("/backtest/daniels", response_model=BacktestResponse)
 def backtest_daniels(
     ticker:      str   = Query(..., description="Ticker symbol to backtest"),
-    period_days: int   = Query(default=730, ge=200, le=1825, description="Calendar days of history"),
+    period_days: int   = Query(default=730, ge=365, le=1825, description="Calendar days of history"),
     exit_mode:   str   = Query(default="SMA50", description="SMA50 | ATR_TRAIL | PCT_TRAIL | BOTH"),
     trail_pct:   float = Query(default=10.0, ge=1.0, le=50.0, description="% drop from peak to trigger PCT_TRAIL exit"),
+    min_criteria: int  = Query(default=8, ge=1, le=8, description="Min criteria (of 8) to trigger entry; 8 = strict screener pass"),
+    cost_bps:    float = Query(default=0.0, ge=0.0, le=100.0, description="One-way slippage+commission per fill, basis points (5–10 realistic)"),
 ):
     """
     Walk-forward backtest of Daniel's breakout strategy on a single ticker.
 
-    Entry: all 6 criteria satisfied → enter next bar's open.
+    Entry: ≥ min_criteria of the 8 screener criteria satisfied → enter next bar's open.
     Exit:  SMA50 close-below | 2×ATR(20) trailing stop | PCT trailing stop | first to trigger (BOTH).
     """
     df = fetch_ohlcv(ticker.upper(), period_days=period_days)
-    if df is None or df.empty or len(df) < 200:
+    if df is None or df.empty or len(df) < 220:
         raise HTTPException(status_code=404, detail=f"Insufficient data for {ticker}")
 
-    result = run_daniels_backtest(df, ticker.upper(), exit_mode=exit_mode.upper(), trail_pct=trail_pct)
+    result = run_daniels_backtest(
+        df, ticker.upper(),
+        exit_mode=exit_mode.upper(),
+        trail_pct=trail_pct,
+        min_criteria=min_criteria,
+        cost_bps=cost_bps,
+    )
     if result is None:
         raise HTTPException(status_code=422, detail="Not enough trading bars to run backtest")
 
@@ -561,6 +621,10 @@ def backtest_daniels_portfolio(
     start_date:       Optional[str] = Query(default=None,        description="Backtest start date YYYY-MM-DD (overrides period_days)"),
     end_date:         Optional[str] = Query(default=None,        description="Backtest end date YYYY-MM-DD (default: today)"),
     rank_by:          str           = Query(default="REL_VOL",   description="REL_VOL | RS_20 | RS_63 | RS_126 | RS_VOL"),
+    cost_bps:         float = Query(default=0.0,   ge=0.0, le=100.0, description="One-way slippage+commission per fill, basis points"),
+    regime_filter:    bool  = Query(default=False, description="Block new entries while benchmark close < its 200-day SMA"),
+    sizing:           str   = Query(default="EQUAL",             description="EQUAL | ATR_RISK"),
+    risk_pct:         float = Query(default=0.75,  ge=0.1, le=5.0,   description="ATR_RISK: % of equity risked per position"),
 ):
     """
     Portfolio walk-forward backtest of Daniel's breakout strategy.
@@ -631,6 +695,10 @@ def backtest_daniels_portfolio(
         rank_by=rank_by.upper(),
         rebalance=rebalance.upper(),
         initial_capital=initial_capital,
+        cost_bps=cost_bps,
+        regime_filter=regime_filter,
+        sizing=sizing.upper(),
+        risk_pct=risk_pct,
     )
     if result is None:
         raise HTTPException(status_code=422, detail="Not enough data to run portfolio backtest")

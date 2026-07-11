@@ -24,6 +24,29 @@ uvicorn app.main:app --reload --port 8000
 ```
 
 API docs available at: http://localhost:8000/docs
+Health check: http://localhost:8000/api/health
+
+### Run as a background service (recommended)
+
+The daily breakout email needs the backend up at ~1pm PT on trading days.
+Instead of starting it manually, install it as a launchd service that starts
+at login and auto-restarts on crashes:
+
+```bash
+./scripts/backend-service.sh install    # one-time setup
+./scripts/backend-service.sh status     # check service + API health
+```
+
+**Important:** while the service holds port 8000, a manual
+`uvicorn --reload` will fail with "address already in use". To do dev work:
+
+```bash
+./scripts/backend-service.sh dev-on     # stops service, frees port 8000
+# ... run uvicorn --reload manually ...
+./scripts/backend-service.sh dev-off    # resumes service
+```
+
+Logs: `./scripts/backend-service.sh logs`
 
 ---
 
