@@ -534,7 +534,7 @@ if page == "Daniel's Breakout":
                         "Criteria":  sig.criteria_met,
                         "Passes":    "✓" if sig.passes else "",
                         "Rel Vol":   round(sig.rel_volume, 2),
-                        "Avg Vol 10d": fmt_vol(sig.avg_vol_10d),
+                        "Avg Vol 10d": float(sig.avg_vol_10d),
                         "Mkt Cap": float(m["market_cap"]) if m.get("market_cap") else 0.0,
                         "Sector":    m.get("sector", ""),
                         "Rating":    m.get("analyst_rating", ""),
@@ -570,8 +570,20 @@ if page == "Daniel's Breakout":
                 st.caption(f"**{passes}** full passes · **{len(rows)}** total matches")
                 df_display = pd.DataFrame(rows)
                 df_display["Mkt Cap"] = df_display["Mkt Cap"].astype(float)
+                # Sort server-side (header-click sorting is browser-only and invisible
+                # to Python) so the chart's "Table Order" dropdown can follow it.
+                tbl_sort_col, tbl_dir_col = st.columns([3, 1])
+                with tbl_sort_col:
+                    d_tbl_sort = st.selectbox("Sort table by", ["Default"] + list(df_display.columns), key="d_tbl_sort")
+                with tbl_dir_col:
+                    d_tbl_desc = st.toggle("Descending", value=True, key="d_tbl_desc",
+                                           disabled=d_tbl_sort == "Default")
+                if d_tbl_sort != "Default":
+                    df_display = df_display.sort_values(d_tbl_sort, ascending=not d_tbl_desc, kind="stable")
                 st.dataframe(df_display, use_container_width=True, hide_index=True, height=400,
-                             column_config={"Mkt Cap": st.column_config.NumberColumn("Mkt Cap", format="compact")})
+                             column_config={"Mkt Cap": st.column_config.NumberColumn("Mkt Cap", format="compact"),
+                                            "Avg Vol 10d": st.column_config.NumberColumn("Avg Vol 10d", format="compact")})
+                d_table_order = df_display["Ticker"].tolist()
 
             if rows:
                 st.subheader("Candlestick Chart")
@@ -579,7 +591,7 @@ if page == "Daniel's Breakout":
                 with sort_col:
                     d_sort_order = st.selectbox("Sort tickers by", ["Table Order", "Alphabetical"], key="d_sort_order")
                 ticker_name_map = {r["Ticker"]: r["Name"] for r in rows}
-                tickers_table_order = [r["Ticker"] for r in rows]
+                tickers_table_order = d_table_order
                 tickers_list = sorted(tickers_table_order) if d_sort_order == "Alphabetical" else tickers_table_order
                 with ticker_col:
                     sel = st.selectbox(
