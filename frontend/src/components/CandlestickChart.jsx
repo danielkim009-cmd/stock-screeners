@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { createChart, CrosshairMode, LineStyle } from "lightweight-charts";
+import { fmtMarketCap } from "./MetaCells";
 
 function fmtVolLocal(v) {
   if (v == null) return "—";
@@ -12,7 +13,8 @@ function fmtVolLocal(v) {
 // markers:   optional array of { date, type: 'entry'|'exit', pnl }
 // showVolume: render volume histogram in lower pane
 // trimStart:  leading bars used only for SMA warm-up; candles/volume start after them
-export default function CandlestickChart({ data, markers, showVolume = false, trimStart = 0, ticker = "" }) {
+// marketCap:  optional current market cap, shown next to Vol in the tooltip
+export default function CandlestickChart({ data, markers, showVolume = false, trimStart = 0, ticker = "", marketCap = null }) {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const tooltipRef = useRef(null);
@@ -184,6 +186,7 @@ export default function CandlestickChart({ data, markers, showVolume = false, tr
         `<span style="color:#8b949e;margin-right:3px">C</span><span style="color:${priceColor};font-weight:700;margin-right:10px">${candle.close.toFixed(2)}</span>` +
         `<span style="color:${priceColor};margin-right:10px">${chg >= 0 ? "+" : ""}${chg.toFixed(2)} (${chg >= 0 ? "+" : ""}${chgPct.toFixed(2)}%)</span>` +
         (vol != null ? `<span style="color:#8b949e;margin-right:3px">Vol</span><span style="margin-right:10px">${fmtVolLocal(vol)}</span>` : "") +
+        (marketCap ? `<span style="color:#8b949e;margin-right:3px">Mkt Cap</span><span style="margin-right:10px">${fmtMarketCap(marketCap)}</span>` : "") +
         (ema21Val != null ? `<span style="color:#58a6ff;margin-right:3px">EMA21</span><span style="color:#58a6ff;margin-right:10px">${ema21Val.value.toFixed(2)}</span>` : "") +
         (ema50Val != null ? `<span style="color:#e3b341;margin-right:3px">EMA50</span><span style="color:#e3b341;margin-right:10px">${ema50Val.value.toFixed(2)}</span>` : "") +
         (ema100Val != null ? `<span style="color:#bc8cff;margin-right:3px">EMA100</span><span style="color:#bc8cff">${ema100Val.value.toFixed(2)}</span>` : "");
@@ -205,7 +208,7 @@ export default function CandlestickChart({ data, markers, showVolume = false, tr
       window.removeEventListener("resize", handleResize);
       chart.remove();
     };
-  }, [data, markers]);
+  }, [data, markers, marketCap]);
 
   return (
     <div ref={containerRef} style={{ position: "relative", width: "100%", borderRadius: 6, overflow: "hidden" }}>

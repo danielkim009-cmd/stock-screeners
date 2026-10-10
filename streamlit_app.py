@@ -206,7 +206,7 @@ new ResizeObserver(() => {{
 </script></body></html>"""
 
 
-def candlestick_chart_html(df, ticker, ema21=None, ema50=None, ema100=None, ema200=None, height=550):
+def candlestick_chart_html(df, ticker, ema21=None, ema50=None, ema100=None, ema200=None, height=550, market_cap=None):
     """TradingView Lightweight Charts — returns embeddable HTML string."""
     candle_data, vol_data, prev_close_map = [], [], {}
     prev_c = None
@@ -248,6 +248,9 @@ def candlestick_chart_html(df, ticker, ema21=None, ema50=None, ema100=None, ema2
     d_e200 = f"{ema200.iloc[-1]:.2f}" if ema200 is not None else "—"
     d_chg_txt = f"{d_sign}{d_chg:.2f} ({d_sign}{d_pct:.2f}%)"
 
+    mcap_html = (f'<span><span class="lbl">Mkt Cap</span><span>{fmt_mktcap(market_cap)}</span></span>'
+                 if market_cap else "")
+
     chart_h = height - 40  # leave 40 px for info bar
 
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
@@ -268,6 +271,7 @@ html, body {{ background:#0d1117; overflow:hidden; font-family:'Courier New',mon
   <span><span class="lbl">C</span><span id="ic" style="color:{d_clr};font-weight:700">{last['Close']:.2f}</span></span>
   <span id="ig" style="color:{d_clr};font-weight:700">{d_chg_txt}</span>
   <span><span class="lbl">Vol</span><span id="iv">{d_vol}</span></span>
+  {mcap_html}
   <span><span class="lbl">EMA21</span><span id="ie21" style="color:#f8c518;font-weight:700">{d_e21}</span></span>
   <span><span class="lbl">EMA50</span><span id="ie50" style="color:#58a6ff;font-weight:700">{d_e50}</span></span>
   <span><span class="lbl">EMA100</span><span id="ie100" style="color:#bc8cff;font-weight:700">{d_e100}</span></span>
@@ -598,7 +602,8 @@ if page == "Daniel's Breakout":
                         ema100_show = ema100[ema100.index >= cutoff]
                         ema200_show = ema200[ema200.index >= cutoff]
                         components.html(
-                            candlestick_chart_html(df_show, sel, ema21_show, ema50_show, ema100_show, ema200_show),
+                            candlestick_chart_html(df_show, sel, ema21_show, ema50_show, ema100_show, ema200_show,
+                                                   market_cap=next((r["Mkt Cap"] for r in rows if r["Ticker"] == sel), None)),
                             height=550,
                             scrolling=False,
                         )
